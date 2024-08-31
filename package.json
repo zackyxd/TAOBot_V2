@@ -1,0 +1,22 @@
+{
+  "dependencies": {
+    "axios": "^1.7.2",
+    "better-sqlite3": "^11.1.2",
+    "commandkit": "^0.1.10",
+    "discord.js": "^14.15.3",
+    "env": "^0.0.2",
+    "moment-timezone": "^0.5.45",
+    "node-cron": "^3.0.3",
+    "quick.db": "^9.1.7"
+  },
+  "name": "taobot_v2",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
