@@ -5,6 +5,7 @@
     "commandkit": "^0.1.10",
     "discord.js": "^14.15.3",
     "env": "^0.0.2",
+    "googleapis": "^143.0.0",
     "moment-timezone": "^0.5.45",
     "node-cron": "^3.0.3",
     "quick.db": "^9.1.7"

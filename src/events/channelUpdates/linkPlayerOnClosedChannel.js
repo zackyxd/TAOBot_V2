@@ -57,7 +57,7 @@ module.exports = {
             continue;
           }
           else if (playertagLink && playertagLink === discordId) {
-            await channel.send({ embeds: createSuccessEmbed(`This tag ${tag} was already linked to this player.`) })
+            await channel.send({ embeds: [createSuccessEmbed(`This tag ${tag} was already linked to this player.`)] })
             continue;
           }
 
@@ -89,7 +89,7 @@ module.exports = {
               console.log("Couldnt change name: " + error)
             }
 
-            console.log(user);
+
             const removeLink = new ButtonBuilder()
               .setCustomId(`removeLink_${tag}_${discordId}`)
               .setLabel("Remove Link")

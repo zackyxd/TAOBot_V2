@@ -18,8 +18,8 @@ module.exports = {
         .setName("user")
         .setDescription("@user to check")
         .setRequired(true)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.MuteMembers),
+    ),
+  // .setDefaultMemberPermissions(PermissionFlagsBits.MuteMembers),
 
   async execute(interaction) {
     if (!interaction.isChatInputCommand()) return;

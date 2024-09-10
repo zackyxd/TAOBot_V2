@@ -31,9 +31,9 @@ async function updateClanInvites(client) {
     const channel = guild.channels.cache.get(await db.get(`guilds.${guild.id}.clanInvitesChannel`));
 
     for (const clantag in clans) {
-      const clanData = await db.get(`clanData.${clantag}.clanInfo`); // ingame data 
+      const clanData = await db.get(`clanData.${clantag}`); // ingame data 
       const clanInfo = await db.get(`clans.${clantag}`); // db data
-
+      // console.log(clanData);
       if (clanInfo.expiryTime && clanInfo.expiryTime <= currentTime) {
         expiredClans.push({ clantag, ...clanData, ...clanInfo });
         if (channel && clanInfo.alreadyExpired === 0) {
@@ -47,8 +47,24 @@ async function updateClanInvites(client) {
         nonExpiredClans.push({ clantag, ...clanData, ...clanInfo });
       }
     }
-    nonExpiredClans.sort((a, b) => b?.clanWarTrophies - a?.clanWarTrophies);
-    expiredClans.sort((a, b) => b?.clanWarTrophies - a?.clanWarTrophies);
+
+    // console.log("After sorting nonExpiredClans:", nonExpiredClans.map(clan => clan.clanWarTrophies));
+    nonExpiredClans.sort((a, b) => {
+      if (a.clanWarTrophies === undefined) return 1;
+      if (b.clanWarTrophies === undefined) return -1;
+      return b.clanWarTrophies - a.clanWarTrophies;
+    });
+
+    // console.log("After sorting nonExpiredClans:", nonExpiredClans.map(clan => clan.clanWarTrophies));
+
+    // console.log("After sorting expiredClans:", expiredClans.map(clan => clan.clanWarTrophies));
+    expiredClans.sort((a, b) => {
+      if (a.clanWarTrophies === undefined) return 1;
+      if (b.clanWarTrophies === undefined) return -1;
+      return b.clanWarTrophies - a.clanWarTrophies;
+    });
+    // console.log("After sorting expiredClans:", expiredClans.map(clan => clan.clanWarTrophies));
+
 
     let nonExpiredMessageContent = "# Active Links\n";
     if (nonExpiredClans.length === 0) {

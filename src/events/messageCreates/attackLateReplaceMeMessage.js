@@ -76,13 +76,13 @@ async function processQueue() {
         for (const playertag of userPlayerTags) {
           // Check if the clan is linked
           let checkPlayer = await API.getPlayer(playertag);
-          const clanData = await db.get(`clans.${checkPlayer.clan.tag}`);
+          const clanData = await db.get(`clans.${checkPlayer?.clan?.tag}`);
           if (clanData && (await db.get(`users.${discordId}.replace-me`) === false || await db.get(`users.${discordId}.replace-me`) === undefined)) {
             // Send a message if the clan is linked
             // await message.channel.send(`The playertag ${playertag} is linked to the clan ${clanData.clanName}.`);
 
             const importantChannel = message.guild.channels.cache.get(clanData.importantChannel);
-            if (importantChannel) {
+            if (importantChannel && !(member.permissions.has([PermissionsBitField.Flags.MuteMembers]))) {
               await importantChannel.send({ embeds: [createErrorEmbed(`⚠️ <@${discordId}> (${checkPlayer.name}) asked to be replaced.`)] });
             }
           }

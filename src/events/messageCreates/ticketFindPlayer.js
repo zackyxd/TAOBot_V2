@@ -94,6 +94,12 @@ module.exports = {
       let crAccount = await API.getPlayer(tag);
       if (crAccount.data) return;
       let player = await playerStats(crAccount);
+      try {
+        let user = await message.guild.members.fetch(userId);
+        await user.setNickname(crAccount.name);
+      } catch (error) {
+        console.log(error, "ticket find player cant set name");
+      }
       await message.channel.send({ embeds: [player.embedReturn] });
     }
     if (existingTags.length === 0) {

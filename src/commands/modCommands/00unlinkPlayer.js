@@ -26,6 +26,7 @@ module.exports = {
     await interaction.deferReply();
 
     let playertag = interaction.options.get("playertag").value.toUpperCase();
+    playertag = playertag.replace(/o/gi, '0'); // Replace 'O' and 'o' with '0'
     if (playertag.charAt(0) !== "#") {
       playertag = "#" + playertag;
     }

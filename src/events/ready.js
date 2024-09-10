@@ -37,7 +37,6 @@ module.exports = {
       scheduled: true,
       timezone: 'America/Phoenix'
     });
-
   }
 }
 

@@ -291,15 +291,20 @@ async function getAttacksAll(clantag, db, nudgerDiscordId, interaction) {
           }
 
           else if (discordAccount) {
-            const channel = interaction.channel;
-            const member = await interaction.guild.members.fetch(playerData.discordId);
-            if (channel && member && channel.permissionsFor(member).has(PermissionsBitField.Flags.ViewChannel)) {
-              players.push(`* <@${playerData.discordId}> (${player.playerName})`); // ping players who havent pinged
+            try {
+              const channel = interaction.channel;
+              const member = await interaction.guild.members.fetch(playerData.discordId);
+              if (channel && member && channel.permissionsFor(member).has(PermissionsBitField.Flags.ViewChannel)) {
+                players.push(`* <@${playerData.discordId}> (${player.playerName})`); // ping players who havent pinged
+              }
+              else {
+                players.push(`* <@${playerData.discordId}> (${player.playerName}) 🙈`); // ping players who havent pinged
+              }
+              continue;
+            } catch (error) {
+              players.push(`* ${player.playerName} ❓`); // ping players who havent pinged
+              continue;
             }
-            else {
-              players.push(`* <@${playerData.discordId}> (${player.playerName}) 🙈`); // ping players who havent pinged
-            }
-            continue;
           }
 
 
@@ -597,15 +602,20 @@ async function getAttacksNoPings(clantag, db, nudgerDiscordId, interaction) {
             }
           }
           else if (discordAccount) {
-            const channel = interaction.channel;
-            const member = await interaction.guild.members.fetch(playerData.discordId);
-            if (channel && member && channel.permissionsFor(member).has(PermissionsBitField.Flags.ViewChannel)) {
-              players.push(`* <@${playerData.discordId}> (${player.playerName})`); // ping players who havent pinged
+            try {
+              const channel = interaction.channel;
+              const member = await interaction.guild.members.fetch(playerData.discordId);
+              if (channel && member && channel.permissionsFor(member).has(PermissionsBitField.Flags.ViewChannel)) {
+                players.push(`* <@${playerData.discordId}> (${player.playerName})`); // ping players who havent pinged
+              }
+              else {
+                players.push(`* <@${playerData.discordId}> (${player.playerName}) 🙈`); // ping players who havent pinged
+              }
+              continue;
+            } catch (error) {
+              players.push(`* ${player.playerName} ❓`); // ping players who havent pinged
+              continue;
             }
-            else {
-              players.push(`* <@${playerData.discordId}> (${player.playerName}) 🙈`); // ping players who havent pinged
-            }
-            continue;
           }
 
 

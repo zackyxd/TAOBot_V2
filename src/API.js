@@ -123,6 +123,19 @@ async function getCurrentRiverRace(clantag) {
   return raceData;
 }
 
+async function getRiverRaceLog(clantag) {
+  if (clantag.charAt(0) !== '#') clantag = '#' + clantag;
+  const raceURL = `https://proxy.royaleapi.dev/v1/clans/${encodeURIComponent(clantag)}/riverracelog`;
+  const raceData = await fetchData(raceURL, "RiverRaceLog", true);
+  if (raceData === 404) {
+    return createErrorEmbed(`This clantag ${clantag} does not exist.`)
+  }
+  else if (raceData === 503) {
+    return createMaintenanceEmbed();
+  }
+  return raceData;
+}
+
 function findFileUpwards(startDir, fileName) {
   let currentDir = startDir;
 
@@ -146,5 +159,6 @@ module.exports = {
   getClan,
   getPlayerBattleHistory,
   getCurrentRiverRace,
+  getRiverRaceLog,
   findFileUpwards
 };

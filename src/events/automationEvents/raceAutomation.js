@@ -14,7 +14,17 @@ module.exports = {
   execute(client) {
     // console.log("test");
     // postRace(client);
-    cron.schedule('*/5 15-59 2 * * *', async function () {
+    cron.schedule('15-59 2 * * *', async function () {
+      // cron.schedule('*/5 * * * * *', async function () {
+      // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
+      // Your code here
+      postRace(client);
+    }, {
+      scheduled: true,
+      timezone: 'America/Phoenix'
+    });
+
+    cron.schedule('0-20 3 * * 1', async function () {
       // cron.schedule('*/5 * * * * *', async function () {
       // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
       // Your code here

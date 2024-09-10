@@ -66,14 +66,17 @@ async function postAutoNudge(client) {
         console.log("No channel ID to post to:", clantag);
         continue;
       }
-      // if (clan && clan.nudgeSettings && clan.nudgeSettings.lastNudged) {
-      //   let lastNudged = moment(clan.nudgeSettings.lastNudged);
-      //   let timeDifference = currentTime.diff(lastNudged, 'minutes');
-      //   if (timeDifference < 60) {
-      //     console.log("No autonudge, time from last nudge within 1 hour", timeDifference);
-      //     continue;
-      //   }
-      // }
+      if (clan && clan.nudgeSettings && clan.nudgeSettings.lastNudged) {
+        let lastNudged = moment(clan.nudgeSettings.lastNudged);
+        let timeDifference = currentTime.diff(lastNudged, 'minutes');
+        if (timeDifference < 60) {
+          console.log("No autonudge, time from last nudge within 1 hour", timeDifference);
+          continue;
+        }
+      }
+      if (clan && clan.nudgeSettings && clan.nudgeSettings.enabled === false) {
+        continue;
+      }
       let sendMessage = await grabAutoNudge(clantag, db, botId, channelId, client, guild.id);
       if (!sendMessage) {
         console.log("Couldn't send message for autonudge for clantag", clantag);
@@ -330,15 +333,21 @@ async function grabAutoNudge(clantag, db, botId, channelId, client, guildId) {
           }
           else if (discordAccount) {
 
-            const guild = client.guilds.cache.get(guildId);
-            const channel = await client.channels.fetch(channelId);
-            const member = await guild.members.fetch(playerData.discordId);
-            if (channel && member && channel.permissionsFor(member).has(PermissionsBitField.Flags.ViewChannel)) {
-              players.push(`* <@${playerData.discordId}> (${player.playerName})`); // ping players who havent pinged
-            } else {
-              players.push(`* <@${playerData.discordId}> (${player.playerName}) 🙈`); // ping players who haven't pinged
+            try {
+              const guild = client.guilds.cache.get(guildId);
+              const channel = await client.channels.fetch(channelId);
+              const member = await guild.members.fetch(playerData.discordId);
+              if (channel && member && channel.permissionsFor(member).has(PermissionsBitField.Flags.ViewChannel)) {
+                players.push(`* <@${playerData.discordId}> (${player.playerName})`); // ping players who havent pinged
+              } else {
+                players.push(`* <@${playerData.discordId}> (${player.playerName}) 🙈`); // ping players who haven't pinged
+              }
+              continue;
+
+            } catch (error) {
+              players.push(`* ${player.playerName} ❓`); // ping players who havent pinged
+              continue;
             }
-            continue;
           }
 
 

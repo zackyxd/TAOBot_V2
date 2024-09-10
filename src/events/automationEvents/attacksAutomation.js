@@ -21,6 +21,16 @@ module.exports = {
       scheduled: true,
       timezone: 'America/Phoenix'
     });
+
+    cron.schedule('0-20 3 * * 1', async function () {
+      // cron.schedule('*/5 * * * * *', async function () {
+      // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
+      // Your code here
+      postAttacks(client);
+    }, {
+      scheduled: true,
+      timezone: 'America/Phoenix'
+    });
   }
 }
 
@@ -46,7 +56,7 @@ async function postAttacks(client) {
         // grabRaceData.periodIndex += 1; // Increment the periodIndex for testing
 
 
-        // If clan hasnt been added to database yet, add it then continue. 
+        // If clan hasnt been added to database yet, add it then continue.
         if (!checkClan || !checkClan.warDay) {
           // Set it to the newest day, false posted, and raceData is the newest data
           await db.set(`raceDataAttacks.${clantag}`, { warDay: grabRaceData.newWarDay, raceData: grabRaceData.newRaceData });
@@ -138,7 +148,7 @@ async function getAttacks(clantag, db, lastDayData) {
   let oldWarDay = -1;
   let newWarDay = -1;
   let warWeek = oldRaceData.sectionIndex + 1; // week
-  let periodIndex = oldRaceData.periodIndex; // day 
+  let periodIndex = oldRaceData.periodIndex; // day
 
   if (whichDayType === 'warDay') {
     whichDayType = `War Week ${warWeek}`;

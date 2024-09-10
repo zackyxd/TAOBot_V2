@@ -11,9 +11,9 @@ module.exports = {
   async execute(message) {
     if (message.author.bot) return;
 
-    if (!(message.content).includes('!')) return;
     const member = message.guild.members.cache.get(message.author.id);
     if (!member.permissions.has([PermissionsBitField.Flags.MuteMembers])) return;
+    if (!(message.content).includes('!')) return;
 
     // console.log(message.content);
     messageQueue.push(message);
@@ -37,7 +37,6 @@ async function processQueue() {
 
     const regex = /!(\w+link)\b/;
     const match = (message.content).match(regex);
-    console.log(match);
     if (!match) continue;
     let clanAbbrev = match[1].replace('link', '');
     const clans = await db.get(`clans`);
@@ -79,8 +78,8 @@ async function processQueue() {
     if (clanInfo && clanInfo.clanLink && clanInfo.alreadyExpired === 0) {
       let embed = new EmbedBuilder()
         .setColor('#00FF00') // Green color for success
-        .setDescription(`## [Click here to join ${clanName}](<${clanInfo.clanLink}>)`) // Make the message bold
-        .setFooter({ text: convertUnixToTime(clanInfo.expiryTime) })
+        .setDescription(`## [Click here to join ${clanName}](<${clanInfo.clanLink}>)\n-# Expires in: <t:${clanInfo.expiryTime}:R>`) // Make the message bold
+      // .setFooter({ text: convertUnixToTime(clanInfo.expiryTime) })
       await message.channel.send({ embeds: [embed] });
     }
 
@@ -103,7 +102,7 @@ function convertUnixToTime(unixTimestamp) {
   const days = Math.floor(timeLeft / (24 * 60 * 60));
   const hours = Math.floor((timeLeft % (24 * 60 * 60)) / (60 * 60));
   const minutes = Math.floor((timeLeft % (60 * 60)) / 60);
-
+  return timeLeft;
   return `Expires in: ${days} days ${hours} hours ${minutes} minutes from this time.`;
 
 
