@@ -12,7 +12,7 @@ module.exports = {
   name: Events.ClientReady,
   once: true,
   execute(client) {
-    // findAttacks(client);
+    findAttacks(client);
     cron.schedule('0 */2 * * * 4,5,6,7,1', async function () {
       // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
       // Your code here
@@ -41,8 +41,8 @@ async function findAttacks(client) {
       let clanData = await API.getClan(clantag);
       if ((raceData && raceData.data) || !clanData) continue;
 
-      let currentWarDay = (raceData.periodIndex % 7) - 2;
-      // let currentWarDay = (raceData.periodIndex % 7) + 1; // only for training day
+      // let currentWarDay = (raceData.periodIndex % 7) - 2 || 1;
+      let currentWarDay = (raceData.periodIndex % 7) + 1; // only for training day
 
       // Simulate a new day by modifying the periodIndex
       // currentWarDay += 1;
@@ -66,10 +66,10 @@ async function findAttacks(client) {
             ...playerData,
             playerName: playerData.playerName || participant.name,
             playertag: playerData.playertag || participant.tag,
-            day1DecksUsed: playerData.day1DecksUsed || 0,
-            day2DecksUsed: playerData.day2DecksUsed || 0,
-            day3DecksUsed: playerData.day3DecksUsed || 0,
-            day4DecksUsed: playerData.day4DecksUsed || 0,
+            // day1DecksUsed: playerData.day1DecksUsed || 0,
+            // day2DecksUsed: playerData.day2DecksUsed || 0,
+            // day3DecksUsed: playerData.day3DecksUsed || 0,
+            // day4DecksUsed: playerData.day4DecksUsed || 0,
             currentDay: currentWarDay
           };
 

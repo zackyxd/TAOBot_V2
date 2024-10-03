@@ -3,3 +3,5 @@ node_modules/
 config.json
 JSON_DATA/
 guildData/
+checkJson.json
+statsCredentials.json

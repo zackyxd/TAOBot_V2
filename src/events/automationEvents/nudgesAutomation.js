@@ -8,36 +8,70 @@ const { createSuccessEmbed, createExistEmbed, createErrorEmbed, createMaintenanc
 const cron = require('node-cron');
 const moment = require('moment-timezone');
 
-module.exports = {
-  name: Events.ClientReady,
-  once: true,
-  execute(client) {
-    console.log()
-    // Friday,Saturday,Sunday at 5pm, 7pm, 9pm, 11pm and 1am
-    cron.schedule('0 17,19,21,23,1 * * 5,6,7', () => {
-      postAutoNudge(client);
-    }, {
-      scheduled: true,
-      timezone: "America/Phoenix"
-    });
+// module.exports = {
+//   name: Events.ClientReady,
+//   once: true,
+//   execute(client) {
+//     // Friday,Saturday,Sunday at 5pm, 7pm, 9pm, 11pm and 1am
+//     cron.schedule('0 17,19,21,23,1 * * 5,6,7', () => {
+//       postAutoNudge(client);
+//     }, {
+//       scheduled: true,
+//       timezone: "America/Phoenix"
+//     });
 
-    // Thursday at 5-11pm
-    cron.schedule('0 17,19,21,23 * * 4', () => {
-      postAutoNudge(client);
-    }, {
-      scheduled: true,
-      timezone: "America/Phoenix"
-    });
+//     // Thursday at 5-11pm
+//     cron.schedule('0 17,19,21,23 * * 4', () => {
+//       postAutoNudge(client);
+//     }, {
+//       scheduled: true,
+//       timezone: "America/Phoenix"
+//     });
 
-    // Monday at 1am
-    cron.schedule('0 1 * * 1', () => {
-      postAutoNudge(client);
-    }, {
-      scheduled: true,
-      timezone: "America/Phoenix"
-    });
+//     cron.schedule('13 20 * * 4', () => {
+//       postAutoNudge(client);
+//     }, {
+//       scheduled: true,
+//       timezone: "America/Phoenix"
+//     });
 
-  }
+//     // Monday at 1am
+//     cron.schedule('0 1 * * 1', () => {
+//       postAutoNudge(client);
+//     }, {
+//       scheduled: true,
+//       timezone: "America/Phoenix"
+//     });
+
+//   }
+// }
+
+const postNudges = async (client) => {
+  // weekend at 7pm -> 1am
+  cron.schedule('0 19,21,23,1 * * 5,6,7', () => {
+    // cron.schedule('0 19,21,23,1 * * 5,6,7', () => {
+    postAutoNudge(client);
+  }, {
+    scheduled: true,
+    timezone: "America/Phoenix"
+  });
+
+  // Thursday at 5-11pm
+  cron.schedule('0 19,21,23 * * 4', () => {
+    postAutoNudge(client);
+  }, {
+    scheduled: true,
+    timezone: "America/Phoenix"
+  });
+
+  // Monday at 1am
+  cron.schedule('0 1 * * 1', () => {
+    postAutoNudge(client);
+  }, {
+    scheduled: true,
+    timezone: "America/Phoenix"
+  });
+
 }
 
 
@@ -275,7 +309,7 @@ async function grabAutoNudge(clantag, db, botId, channelId, client, guildId) {
 
     let currentTime = moment().tz("America/Phoenix");
     let startTime = moment().tz("America/Phoenix").hour(21).minute(1); // If it's after this time, keep pinging
-    let endTime = moment().tz("America/Phoenix").hour(1).minute(1); // If it's before this time, keep pinging
+    let endTime = moment().tz("America/Phoenix").hour(3).minute(1); // If it's before this time, keep pinging
     // Adjust the end time to the next day if it's before the start time
     if (endTime.isBefore(startTime)) {
       endTime.add(1, 'day');
@@ -293,10 +327,11 @@ async function grabAutoNudge(clantag, db, botId, channelId, client, guildId) {
             continue;
           }
 
-          if (player.role === 'coLeader' || player.role === 'leader') {
+          if ((player.role === 'coLeader' || player.role === 'leader') && discordAccount && discordAccount.pingCo !== true) {
             players.push(`* **${player.playerName}**`);
             continue;
           }
+
           if (discordAccount && discordAccount['replace-me'] === true) {
             const guild = client.guilds.cache.get(guildId);
             const channel = await client.channels.fetch(channelId);
@@ -313,23 +348,21 @@ async function grabAutoNudge(clantag, db, botId, channelId, client, guildId) {
             const guild = client.guilds.cache.get(guildId);
             const channel = await client.channels.fetch(channelId);
             const member = await guild.members.fetch(playerData.discordId);
-            // const guild = client.guilds.cache.get(guildId);
-            if (currentTime.isBetween(startTime, endTime)) {
+
+            if (currentTime.isBetween(startTime, endTime)) { // time between it should nudge people
               if (channel && member && channel.permissionsFor(member).has(PermissionsBitField.Flags.ViewChannel)) {
-                players.push(`* <@${playerData.discordId}> (${player.playerName})`); // ping players who havent pinged
+                players.push(`* <@${playerData.discordId}> (${player.playerName})`); // ping players who haven't pinged
               } else {
                 players.push(`* <@${playerData.discordId}> (${player.playerName}) 🙈`); // ping players who haven't pinged
               }
-              continue;
-            }
-            else {
+            } else {
               if (channel && member && channel.permissionsFor(member).has(PermissionsBitField.Flags.ViewChannel)) {
                 players.push(`* ${player.playerName} ✅`); // show who attacking late
               } else {
                 players.push(`* ${player.playerName} ✅🙈`); // show who attacking late
               }
-              continue;
             }
+            continue;
           }
           else if (discordAccount) {
 
@@ -444,3 +477,5 @@ function sortList(list) {
     return 0;
   });
 }
+
+module.exports = { postNudges };

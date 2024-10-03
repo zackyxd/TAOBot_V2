@@ -6,17 +6,9 @@ const { QuickDB } = require("quick.db")
 const fs = require('fs');
 const { createSuccessEmbed, createExistEmbed, createErrorEmbed, createMaintenanceEmbed } = require('../../utilities/embedUtility.js');
 
-module.exports = {
-  name: Events.ClientReady,
-  once: true,
-  execute(client) {
-    setInterval(() => checkClanChanges(client), 180000);
-  }
-}
 
 
-
-async function checkClanChanges(client) {
+const checkClanChanges = async (client) => {
   client.guilds.cache.forEach(async (guild) => {
     const dbPath = API.findFileUpwards(__dirname, `guildData/${guild.id}.sqlite`);
     const db = new QuickDB({ filePath: dbPath, timeout: 5000 });
@@ -324,3 +316,6 @@ async function findEmojiId(nameLookingFor) {
     return null;
   }
 }
+
+
+module.exports = { checkClanChanges };

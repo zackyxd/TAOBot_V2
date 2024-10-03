@@ -47,17 +47,17 @@ module.exports = {
       for (tag of playerLinks) {
         let crAccount = await API.getPlayer(tag);
         if (crAccount.data) {
-          await channel.send({ embeds: [createErrorEmbed(`Couldn't find the account with tag ${tag}`)] })
+          await channel.send({ embeds: [createErrorEmbed(`Couldn't find the account with the tag ${tag}`)] })
           continue;
         }
         try {
           let playertagLink = await db.get(`playertags.${tag}.discordId`);
           if (playertagLink && playertagLink !== discordId) {
-            await channel.send({ embeds: [createExistEmbed(`This tag ${tag} was linked to someone else. Not linking it.`)] });
+            await channel.send({ embeds: [createExistEmbed(`The tag ${tag} was linked to someone else. Not linking it.`)] });
             continue;
           }
           else if (playertagLink && playertagLink === discordId) {
-            await channel.send({ embeds: [createSuccessEmbed(`This tag ${tag} was already linked to this player.`)] })
+            await channel.send({ embeds: [createSuccessEmbed(`The tag ${tag} was already linked to this player.`)] })
             continue;
           }
 

@@ -324,10 +324,10 @@ module.exports = {
             await db.set(`massLinkChannels.${channelId}`, confirmDeleteChannel);
             const message = await interaction.channel.messages.fetch(interaction.message.id);
             const embed = message.embeds[0];
-            const updatedEmbed = new EmbedBuilder(embed).setFooter({ text: `${numberOfVotes + 1}/3 needed` });
+            const updatedEmbed = new EmbedBuilder(embed).setFooter({ text: `${numberOfVotes + 1}/2 needed` });
             await message.edit({ embeds: [updatedEmbed] });
           }
-          if (confirmDeleteChannel.deleteCounts >= 3) {
+          if (confirmDeleteChannel.deleteCounts >= 2) { // change this number for amount of people needed to delete
             const message = await interaction.channel.messages.fetch(interaction.message.id);
             const embed = message.embeds[0];
             const updatedEmbed = new EmbedBuilder(embed).setFooter({ text: `Deleting in 5 seconds!` });
@@ -338,6 +338,7 @@ module.exports = {
                 let channelId = interaction.channel.id;
                 const channel = await interaction.client.channels.fetch(channelId);
                 await channel.delete();
+                await db.delete(`massLinkChannels.${channelId}`);
               } catch (error) {
                 console.log("Channel is gone, can't delete", error);
               }

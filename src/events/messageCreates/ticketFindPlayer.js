@@ -46,7 +46,6 @@ module.exports = {
         msg = msg.toUpperCase();
         msg = msg.replace(/o/gi, '0'); // Replace 'O' and 'o' with '0'
         let tag = msg;
-        console.log(tag);
         if (tag.charAt(0) !== '#') {
           tag = '#' + tag;
         }
@@ -83,6 +82,7 @@ module.exports = {
     const db = new QuickDB({ filePath: dbPath });
 
     let existingTags = await db.get(`tickets_${guildId}_${message.channelId}_${userId}`) || [];
+    console.log(existingTags);
     // Filter out tags that already exist
     let newTags = validTags.filter(tag => !existingTags.includes(tag));
     if (newTags.length === 0) {
@@ -96,14 +96,16 @@ module.exports = {
       let player = await playerStats(crAccount);
       try {
         let user = await message.guild.members.fetch(userId);
-        await user.setNickname(crAccount.name);
+        if (existingTags.length === 0) {
+          await user.setNickname(crAccount.name);
+        }
       } catch (error) {
         console.log(error, "ticket find player cant set name");
       }
       await message.channel.send({ embeds: [player.embedReturn] });
     }
     if (existingTags.length === 0) {
-      await message.channel.send({ content: `Hey <@${message.author.id}>! Thank you for providing your playertag! One of our coleaders will be with you as soon as possible!` })
+      await message.channel.send({ content: `Hey <@${message.author.id}>, Thank you for providing your playertag. One of our coleaders will be with you as soon as possible!` })
     }
     let updatedTags = [...existingTags, ...newTags];
 

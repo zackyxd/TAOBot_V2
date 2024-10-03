@@ -78,7 +78,7 @@ async function processQueue() {
     if (clanInfo && clanInfo.clanLink && clanInfo.alreadyExpired === 0) {
       let embed = new EmbedBuilder()
         .setColor('#00FF00') // Green color for success
-        .setDescription(`## [Click here to join ${clanName}](<${clanInfo.clanLink}>)\n-# Expires in: <t:${clanInfo.expiryTime}:R>`) // Make the message bold
+        .setDescription(`## [Click here to join ${clanName}](<${clanInfo.clanLink}>)\n-# Expires: <t:${clanInfo.expiryTime}:R>`) // Make the message bold
       // .setFooter({ text: convertUnixToTime(clanInfo.expiryTime) })
       await message.channel.send({ embeds: [embed] });
     }

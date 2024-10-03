@@ -6,11 +6,17 @@ const API = require("../API.js");
 const Database = require('better-sqlite3');
 const { QuickDB } = require("quick.db")
 const fs = require('fs');
+const { checkClanChanges } = require('./automationEvents/clanlogsAutomation');
+const { checkAttacks } = require('./automationEvents/attacksAutomation');
+const { checkRace } = require('./automationEvents/scoresAutomation');
+const { updateClanInvites } = require('./automationEvents/createInviteLinkAutomation');
+const { postNudges } = require('./automationEvents/nudgesAutomation');
+
 
 module.exports = {
   name: Events.ClientReady,
   once: true,
-  execute(client) {
+  async execute(client) {
     console.log(`Ready! Logged in as ${client.user.tag}`);
     client.user.setActivity({
       name: "Over AFAM",
@@ -37,6 +43,20 @@ module.exports = {
       scheduled: true,
       timezone: 'America/Phoenix'
     });
+
+    checkAttacks(client);
+    checkRace(client);
+    postNudges(client);
+    setInterval(async () => {
+      await updateClanInvites(client);
+    }, 15000);
+
+    setInterval(async () => {
+      await checkClanChanges(client);
+    }, 180000);
+
+
+
   }
 }
 

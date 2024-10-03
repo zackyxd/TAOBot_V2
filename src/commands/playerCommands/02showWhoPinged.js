@@ -118,7 +118,7 @@ module.exports = {
         hasAttackingLatePlayers = true;
         attackingLateMessage += `__**${clan.clanName}**__\n`;
         clan.attackingLatePlayers.forEach(player => {
-          attackingLateMessage += `[${player.name}](<https://royaleapi.com/player/(${(player.playertag).substring(1)})>)\n`;
+          attackingLateMessage += `[${player.name}](<https://royaleapi.com/player/${(player.playertag).substring(1)}>)\n`;
         });
         attackingLateMessage += `\n`;
       }
@@ -136,7 +136,7 @@ module.exports = {
         hasReplaceMePlayers = true;
         replaceMeMessage += `__**${clan.clanName}**__\n`;
         clan.replaceMePlayers.forEach(player => {
-          replaceMeMessage += `[${player.name}](<https://royaleapi.com/player/(${(player.playertag).substring(1)})>)\n`;
+          replaceMeMessage += `[${player.name}](<https://royaleapi.com/player/${(player.playertag).substring(1)}>)\n`;
         });
         replaceMeMessage += `\n`;
       }

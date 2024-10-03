@@ -11,7 +11,7 @@ module.exports = {
     if (message.author.bot) return;
     const member = message.guild.members.cache.get(message.author.id);
     if (!member.permissions.has(PermissionsBitField.Flags.MuteMembers)) return;
-    if (!message.content.startsWith('!createchannel')) return;
+    if (!message.content.startsWith('!createchannel') && !message.content.startsWith('!cc')) return;
 
     const guild = message.guild;
     const mentionedUsers = message.mentions.users;
@@ -38,25 +38,58 @@ module.exports = {
     const channel = await guild.channels.create({
       name: `members-${count}`, // Ensure the name field is defined
       type: ChannelType.GuildText,
-      parent: "1283051581834530978", // category id
-      permissionOverwrites: [
-        {
-          id: guild.id, // The ID of the guild (everyone)
-          deny: ['ViewChannel', 'SendMessages'], // Deny view channel permission for everyone
-        },
-        ...mentionedUsers.map(user => ({
-          id: user.id, // The ID of the mentioned user
-          allow: ['ViewChannel', 'SendMessages'], // Allow view channel permission for the mentioned user
-        })),
-      ],
+      // parent: '1182482429810847807', // my guild category id
+      parent: "1283051581834530978", // TAO category id
+      permissionOverwrites: null, // Inherit permissions from the category
     });
 
-    await message.channel.send({ embeds: [createSuccessEmbed(`Created <#${channel.id}> and the pinged users can now view the channel.`)] });
+
+    let linkedAccounts = [];
+    // Add specific permission overwrites for mentioned users
+    for (const user of mentionedUsers.values()) {
+
+      let findLinkedAccounts = await db.get(`users.${user.id}`);
+      let playertags = findLinkedAccounts?.playertags;
+      if (!playertags) continue;
+      linkedAccounts = [...linkedAccounts, ...playertags]
+
+
+      await channel.permissionOverwrites.create(user, {
+        ViewChannel: true,
+        SendMessages: true,
+      });
+    }
+
+
+    let allUsersHaveAccess;
+    do {
+      allUsersHaveAccess = true;
+      for (const user of mentionedUsers.values()) {
+        if (!channel.permissionsFor(user).has(PermissionsBitField.Flags.ViewChannel)) {
+          await channel.permissionOverwrites.create(user, {
+            ViewChannel: true,
+            SendMessages: true,
+          });
+          allUsersHaveAccess = false;
+        }
+      }
+    } while (!allUsersHaveAccess);
+    console.log("Confirmed everyone has access");
+
+
+    if (mentionedUsers.size === 1) {
+      await message.channel.send({ embeds: [createSuccessEmbed(`Created <#${channel.id}> with ${mentionedUsers.size} member.\n-# Please check the channel above if you were pinged.`)] });
+    }
+    else {
+      await message.channel.send({ embeds: [createSuccessEmbed(`Created <#${channel.id}> with ${mentionedUsers.size} members.\n-# Please check the channel above if you were pinged.`)] });
+    }
+
     const mentions = mentionedUsers.map(user => `<@${user.id}>`).join(' ');
     await channel.send(`Attention: ${mentions}\nCreated by <@${message.author.id}>`);
     await db.set(`massLinkChannels.${channel.id}`, {
       "channelId": channel.id,
-      "users": []
+      "users": [],
+      "playersAdded": linkedAccounts
     });
   }
 }

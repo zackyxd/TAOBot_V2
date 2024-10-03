@@ -7,31 +7,64 @@ const fs = require('fs');
 const { createSuccessEmbed, createExistEmbed, createErrorEmbed, createMaintenanceEmbed } = require('../../utilities/embedUtility.js');
 const cron = require('node-cron');
 
-module.exports = {
-  name: Events.ClientReady,
-  once: true,
-  execute(client) {
-    // postAttacks(client);
-    cron.schedule('15-59 2 * * *', async function () {
-      // cron.schedule('*/5 * * * * *', async function () {
-      // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
-      // Your code here
-      postAttacks(client);
-    }, {
-      scheduled: true,
-      timezone: 'America/Phoenix'
-    });
+// module.exports = {
+//   name: Events.ClientReady,
+//   once: true,
+//   execute(client) {
+//     // postAttacks(client);
+//     cron.schedule('15-59 2 * * *', async function () {
+//       // cron.schedule('*/5 * * * * *', async function () {
+//       // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
+//       // Your code here
+//       postAttacks(client);
+//     }, {
+//       scheduled: true,
+//       timezone: 'America/Phoenix'
+//     });
 
-    cron.schedule('0-20 3 * * 1', async function () {
-      // cron.schedule('*/5 * * * * *', async function () {
-      // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
-      // Your code here
-      postAttacks(client);
-    }, {
-      scheduled: true,
-      timezone: 'America/Phoenix'
-    });
-  }
+//     cron.schedule('0-20 3 * * 1', async function () {
+//       // cron.schedule('*/5 * * * * *', async function () {
+//       // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
+//       // Your code here
+//       postAttacks(client);
+//     }, {
+//       scheduled: true,
+//       timezone: 'America/Phoenix'
+//     });
+//   }
+// }
+
+const checkAttacks = async (client) => {
+  cron.schedule('15-59 2 * * *', async function () {
+    // cron.schedule('*/5 * * * * *', async function () {
+    // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
+    // Your code here
+    postAttacks(client);
+  }, {
+    scheduled: true,
+    timezone: 'America/Phoenix'
+  });
+
+  cron.schedule('0-25 3 * * *', async function () {
+    // cron.schedule('*/5 * * * * *', async function () {
+    // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
+    // Your code here
+    postAttacks(client);
+  }, {
+    scheduled: true,
+    timezone: 'America/Phoenix'
+  });
+
+  // cron.schedule('*/5 * * * * *', async function () {
+  //   // cron.schedule('*/5 * * * * *', async function () {
+  //   // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
+  //   // Your code here
+  //   postAttacks(client);
+  // }, {
+  //   scheduled: true,
+  //   timezone: 'America/Phoenix'
+  // });
+
 }
 
 
@@ -45,7 +78,6 @@ async function postAttacks(client) {
 
     for (const clantag in clans) {
       let checkClan = await db.get(`raceDataAttacks.${clantag}`);
-
       try {
         let grabRaceData = await getAttacks(clantag, db, checkClan?.raceData); // input clantag (to search for newRaceData), database, and the old data
         if (!grabRaceData) continue; // If clantag returns nothing, continue
@@ -55,25 +87,35 @@ async function postAttacks(client) {
         // Simulate a new day by modifying the periodIndex
         // grabRaceData.periodIndex += 1; // Increment the periodIndex for testing
 
-
         // If clan hasnt been added to database yet, add it then continue.
-        if (!checkClan || !checkClan.warDay) {
-          // Set it to the newest day, false posted, and raceData is the newest data
-          await db.set(`raceDataAttacks.${clantag}`, { warDay: grabRaceData.newWarDay, raceData: grabRaceData.newRaceData });
-          // checkClan = { warDay: grabRaceData.newWarDay, posted: false, raceData: grabRaceData.newRaceData };
+        if (!checkClan || !checkClan.oldAttacksLeft) {
+          // If checkClan doesnt exist or new Attacks, make the old attacks be the new attacks
+          await db.set(`raceDataAttacks.${clantag}`, { raceData: grabRaceData.newRaceData, oldAttacksLeft: grabRaceData.newAttacksLeft, warDay: grabRaceData.newWarDay });
+          console.log("Created new checkClan", `Set oldAttacks left to ${grabRaceData.newAttacksLeft}`);
           continue;
         }
-
+        // grabRaceData.newAttacksLeft = 200;
         // grabRaceData.newWarDay += 1;
+        // grabRaceData.oldWarDay += 1;
+        console.log("newAttacksLeft:", grabRaceData.newAttacksLeft, "oldAttacksLeft:", checkClan.oldAttacksLeft);
+        console.log("Difference:", grabRaceData.newAttacksLeft - checkClan.oldAttacksLeft);
+        console.log("Condition:", (grabRaceData.newAttacksLeft - checkClan.oldAttacksLeft) < 0);
+        console.log(typeof grabRaceData.newAttacksLeft, typeof checkClan.oldAttacksLeft);
         console.log(`Day ${grabRaceData.oldWarDay} vs ${grabRaceData.newWarDay}`)
+        // Debugging statement before the if block
+        // console.log("Before if block");
 
         // If same day, no change
-        if (grabRaceData.oldWarDay === grabRaceData.newWarDay) {
-          console.log("Attacks. Same day, no change, update data");
-          checkClan = { warDay: grabRaceData.newWarDay, raceData: grabRaceData.newRaceData };
+        if (((grabRaceData.newAttacksLeft - checkClan.oldAttacksLeft) <= 0) && grabRaceData.oldWarDay === grabRaceData.newWarDay) {
+          console.log("Inside if block");
+          console.log("Attacks. Same attacks or negative, same day");
+          checkClan = { oldAttacksLeft: grabRaceData.newAttacksLeft, raceData: grabRaceData.newRaceData, warDay: grabRaceData.newWarDay };
           await db.set(`raceDataAttacks.${clantag}`, checkClan);
           continue;
         }
+
+        // Debugging statement after the if block
+        // console.log("After if block");
 
         if (grabRaceData.noTrainingPost === 'training') {
           console.log("Training day, no post, update data");
@@ -98,7 +140,7 @@ async function postAttacks(client) {
         }
 
         // Change checkClan to new data
-        checkClan = { warDay: grabRaceData.newWarDay, raceData: grabRaceData.newRaceData };
+        checkClan = { oldAttacksLeft: grabRaceData.newAttacksLeft, raceData: grabRaceData.newRaceData, warDay: grabRaceData.newWarDay };
         await db.set(`raceDataAttacks.${clantag}`, checkClan);
         console.log("Updated Attacks Automation Data");
 
@@ -124,6 +166,7 @@ async function getAttacks(clantag, db, lastDayData) {
     console.log("Old race data didnt exist, creating new");
     return { newRaceData: newRaceData };
   }
+  let oldAttacksLeft = oldRaceData?.oldAttacksLeft || 200;
   // console.log("CHECKING WAR FOR:", clantag);
   let pointsToday = oldRaceData.clan.fame || 0;
   // console.log(pointsToday);
@@ -177,11 +220,11 @@ async function getAttacks(clantag, db, lastDayData) {
   // console.log("New day is", newWarDay)
   // warDay += 1
   // pointsToday = 10001;
-  console.log(pointsToday);
   if (pointsToday < 10000 || whichDayType === `Colosseum`) {
     console.log("Came in here bc colo");
     for (const participant of oldRaceData.clan.participants) {
       const member = await db.get(`playertags.${participant.tag}`);
+      console.log(member);
       member.playertag = participant.tag;
 
       let attacksUsedToday = -999; // member.attacksUsed (for today)
@@ -390,7 +433,7 @@ async function getAttacks(clantag, db, lastDayData) {
   //   .setThumbnail(process.env.BOT_IMAGE)
   //   .setTimestamp();
   // // return { embed: embedReturn, oldWarDay: oldWarDay, newWarDay: newWarDay, newRaceData: newRaceData };
-
+  // decksRemaining -= 10;
   if (outOfClan || partials || cantAttackAnymoreBool || cantUseAttacksBool) {
     const embedReturn = new EmbedBuilder()
       .setTitle("__" + clanData.name + "__")
@@ -401,7 +444,7 @@ async function getAttacks(clantag, db, lastDayData) {
       .setThumbnail(process.env.BOT_IMAGE)
       .setTimestamp()
       .setFooter({ text: footer });
-    return { embed: embedReturn, oldWarDay: oldWarDay, newWarDay: newWarDay, newRaceData: newRaceData, noTrainingPost: oldRaceData.periodType, clanName: newRaceData.clan.name };
+    return { embed: embedReturn, oldWarDay: oldWarDay, newWarDay: newWarDay, newRaceData: newRaceData, noTrainingPost: oldRaceData.periodType, clanName: newRaceData.clan.name, oldAttacksLeft: oldAttacksLeft, newAttacksLeft: decksRemaining };
   }
   else {
     const embedReturn = new EmbedBuilder()
@@ -412,7 +455,7 @@ async function getAttacks(clantag, db, lastDayData) {
       .setColor('Purple')
       .setThumbnail(process.env.BOT_IMAGE)
       .setTimestamp();
-    return { embed: embedReturn, oldWarDay: oldWarDay, newWarDay: newWarDay, newRaceData: newRaceData, noTrainingPost: oldRaceData.periodType, clanName: newRaceData.clan.name };
+    return { embed: embedReturn, oldWarDay: oldWarDay, newWarDay: newWarDay, newRaceData: newRaceData, noTrainingPost: oldRaceData.periodType, clanName: newRaceData.clan.name, oldAttacksLeft: oldAttacksLeft, newAttacksLeft: decksRemaining };
   }
 
 }
@@ -430,3 +473,5 @@ function sortList(list) {
     return 0;
   });
 }
+
+module.exports = { checkAttacks };

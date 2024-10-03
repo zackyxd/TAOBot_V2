@@ -559,10 +559,11 @@ async function getAttacksNoPings(clantag, db, nudgerDiscordId, interaction) {
             continue;
           }
 
-          if (player.role === 'coLeader' || player.role === 'leader') {
+          if ((player.role === 'coLeader' || player.role === 'leader') && discordAccount && discordAccount.pingCo !== true) {
             players.push(`* **${player.playerName}**`);
             continue;
           }
+
           if (discordAccount && discordAccount['replace-me'] === true) {
             const channel = interaction.channel;
             const member = await interaction.guild.members.fetch(playerData.discordId);
@@ -582,21 +583,19 @@ async function getAttacksNoPings(clantag, db, nudgerDiscordId, interaction) {
 
             if (currentTime.isBetween(startTime, endTime)) {
               if (channel && member && channel.permissionsFor(member).has(PermissionsBitField.Flags.ViewChannel)) {
-                if (channel && member && channel.permissionsFor(member).has(PermissionsBitField.Flags.ViewChannel)) {
-                  players.push(`* <@${playerData.discordId}> (${player.playerName})`); // ping players who havent pinged
-                }
-                else {
-                  players.push(`* <@${playerData.discordId}> (${player.playerName}) 🙈`); // ping players who havent pinged
-                }
+                players.push(`* <@${playerData.discordId}> (${player.playerName})`); // ping players who havent pinged
+              }
+              else {
+                players.push(`* <@${playerData.discordId}> (${player.playerName}) 🙈`); // ping players who havent pinged
               }
               continue;
             }
             else {
               if (channel && member && channel.permissionsFor(member).has(PermissionsBitField.Flags.ViewChannel)) {
-                players.push(`* (${player.playerName})`); // ping players who havent pinged
+                players.push(`* ${player.playerName} ✅`); // dont ping attacking late
               }
               else {
-                players.push(`* ${player.playerName} ✅🙈`); // ping players who havent pinged
+                players.push(`* ${player.playerName} ✅🙈`); // dont ping attacking late
               }
               continue;
             }

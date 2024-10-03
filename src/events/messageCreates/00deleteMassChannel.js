@@ -12,7 +12,7 @@ module.exports = {
     if (message.author.bot) return;
     const member = message.guild.members.cache.get(message.author.id);
     if (!member.permissions.has(PermissionsBitField.Flags.MuteMembers)) return;
-    if (!message.content.startsWith('!deletechannel')) return;
+    if (!message.content.startsWith('!deletechannel') && !message.content.startsWith('!dc')) return;
 
     const guild = message.guild;
 
@@ -35,13 +35,13 @@ module.exports = {
       .setTitle(`Delete Channel`)
       .setColor("Red")
       .setDescription(`Are you sure you want to delete this channel?`)
-      .setFooter({ text: `0/3 needed` })
+      .setFooter({ text: `0/2 needed` })
 
     let confirmButton = new ButtonBuilder()
       .setCustomId(`confirmDeleteChannel_${message.channel.id}`)
       .setLabel("Delete")
       .setStyle(ButtonStyle.Danger);
-
+    await message.delete();
     const buttonRow = new ActionRowBuilder().addComponents(confirmButton);
     await message.channel.send({ embeds: [embed], components: [buttonRow] });
 

@@ -67,6 +67,7 @@ module.exports = {
       const fameAverage = parseFloat(row[3]);
       const fameData = row.slice(4);
       const last3Wars = [];
+      console.log(lastClan);
 
       for (let i = 0; i < fameData.length; i += 2) {
         const fame = parseInt(fameData[i]);
@@ -143,7 +144,7 @@ module.exports = {
 
           // Check if the player has 36 or more attacks
           const totalAttacks = player.last3Wars.reduce((sum, war) => sum + war.attacks, 0);
-          if (totalAttacks < 36) continue;
+          if (totalAttacks < 28) continue;
           // console.log(player.playerName, totalAttacks);
 
           try {

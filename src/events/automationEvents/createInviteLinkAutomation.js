@@ -9,16 +9,18 @@ const fs = require('fs');
 const { createSuccessEmbed, createExistEmbed, createErrorEmbed, createMaintenanceEmbed } = require('../../utilities/embedUtility.js');
 
 
-module.exports = {
-  name: Events.ClientReady,
-  once: true,
-  execute(client) {
-    setInterval(() => updateClanInvites(client), 15000);
-  }
-}
+// module.exports = {
+//   name: Events.ClientReady,
+//   once: true,
+//   execute(client) {
+//     setInterval(() => updateClanInvites(client), 15000);
+//   }
+// }
 
 
-async function updateClanInvites(client) {
+
+
+const updateClanInvites = async (client) => {
   // console.log("Updating Clan Invites");
   client.guilds.cache.forEach(async (guild) => {
     const dbPath = API.findFileUpwards(__dirname, `guildData/${guild.id}.sqlite`);
@@ -165,3 +167,6 @@ async function updateClanInvites(client) {
     }
   });
 }
+
+
+module.exports = { updateClanInvites };
