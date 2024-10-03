@@ -1,4 +1,5 @@
 const { google } = require('googleapis');
+require('dotenv/config');
 const { Events, PermissionsBitField, EmbedBuilder, Embed, SlashCommandBuilder, PermissionFlagsBits, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
 const { QuickDB } = require('quick.db');
 const API = require("../../API.js");
@@ -312,7 +313,7 @@ module.exports = {
 async function readSheet(group) {
   const sheets = google.sheets('v4');
   const auth = new google.auth.GoogleAuth({
-    keyFile: "statsCredentials.json",
+    keyFile: JSON.parse(process.env.STATSCREDENTIALS),
     scopes: ["https://www.googleapis.com/auth/spreadsheets"],
   });
 
