@@ -9,13 +9,14 @@ const { createSuccessEmbed, createExistEmbed, createErrorEmbed, createMaintenanc
 
 
 const checkClanChanges = async (client) => {
+  console.log("Going through clan logs");
   client.guilds.cache.forEach(async (guild) => {
     const dbPath = API.findFileUpwards(__dirname, `guildData/${guild.id}.sqlite`);
     const db = new QuickDB({ filePath: dbPath, timeout: 5000 });
     const clans = await db.get(`clans`);
     if (!clans) return;
-
     for (const clantag in clans) {
+      console.log(clantag);
       let currentData = await API.getClan(clantag);
       let channelId = await db.get(`clans.${clantag}.clanlogsChannel`);
       const channel = guild.channels.cache.get(channelId);
@@ -36,6 +37,7 @@ const checkClanChanges = async (client) => {
 
 
   });
+  console.log("Finished clan logs");
 }
 
 async function checkForChanges(guild, clantag, currentData) {
@@ -44,7 +46,7 @@ async function checkForChanges(guild, clantag, currentData) {
   const db = new QuickDB({ filePath: dbPath, timeout: 5000 });
 
   const previousData = await db.get(`clanData.${clantag}`);
-  let changes = [];
+  // let changes = [];
 
   if (!previousData) {
     // no previous data, make it the new data
@@ -55,116 +57,100 @@ async function checkForChanges(guild, clantag, currentData) {
     return { veryNewData: createSuccessEmbed(`Successfully started clan logs for \`${clanName.name}\``), changes: [] };
   }
 
+  const changes = await Promise.all([
+    processMemberJoinLeave(db, previousData, currentData, clantag),
+    processMemberPromoDemo(db, previousData, currentData, clantag),
+    processWarTrophyChange(previousData, currentData, clantag),
+    processClanType(previousData, currentData, clantag)
+  ]);
 
-  let memberJoinLeaveEmbeds = await processMemberJoinLeave(db, previousData, currentData, clantag);
-  if (memberJoinLeaveEmbeds) {
-    changes = changes.concat(memberJoinLeaveEmbeds);
-  }
-
-  let memberRoleChangeEmbeds = await processMemberPromoDemo(db, previousData, currentData, clantag);
-  if (memberRoleChangeEmbeds) {
-    changes = changes.concat(memberRoleChangeEmbeds);
-  }
-
-  let warTrophyChangeEmbed = await processWarTrophyChange(previousData, currentData, clantag);
-  if (warTrophyChangeEmbed) {
-    changes = changes.concat(warTrophyChangeEmbed);
-  }
-
-  // Update the database with the current data
-  if (changes.length !== 0) {
+  const flatChanges = changes.flat();
+  if (flatChanges.length) {
     await db.set(`clanData.${clantag}`, currentData);
-    // console.log(changes);
   }
-  return { changes: changes }
+  return { changes: flatChanges.filter(Boolean) };
+
+  // let memberJoinLeaveEmbeds = await processMemberJoinLeave(db, previousData, currentData, clantag);
+  // if (memberJoinLeaveEmbeds) {
+  //   changes = changes.concat(memberJoinLeaveEmbeds);
+  // }
+
+  // let memberRoleChangeEmbeds = await processMemberPromoDemo(db, previousData, currentData, clantag);
+  // if (memberRoleChangeEmbeds) {
+  //   changes = changes.concat(memberRoleChangeEmbeds);
+  // }
+
+  // let warTrophyChangeEmbed = await processWarTrophyChange(previousData, currentData, clantag);
+  // if (warTrophyChangeEmbed) {
+  //   changes = changes.concat(warTrophyChangeEmbed);
+  // }
+
+  // let clanTypeChangeEmbed = await processClanType(previousData, currentData, clantag);
+  // if (clanTypeChangeEmbed) {
+  //   changes = changes.concat(clanTypeChangeEmbed);
+  // }
+
+  // // Update the database with the current data
+  // if (changes.length !== 0) {
+  //   await db.set(`clanData.${clantag}`, currentData);
+  //   // console.log(changes);
+  // }
+  // return { changes: changes }
 }
 
 
 
 async function processMemberJoinLeave(db, previousData, currentData, clantag) {
   let changes = [];
-
   const previousMembers = previousData.memberList.map(member => member.tag);
   const currentMembers = currentData.memberList.map(member => member.tag);
   const membersJoined = currentMembers.filter(tag => !previousMembers.includes(tag));
   const membersLeft = previousMembers.filter(tag => !currentMembers.includes(tag));
 
-  for (let tag of membersJoined) {
-    const discordId = await db.get(`playertags.${tag}`)
-    const member = currentData.memberList.find(member => member.tag === tag);
-    let title, description, color;
-    tag = (member.tag).substring(1);
-    clantag = (clantag).substring(1);
-    let role = getRoleDisplayName(member.role);
-    let arenaName = member.arena.name.replace(/[!'.,]/g, '') // remove apostrophes
-      .toLowerCase() // convert to lowercase
-      .replace(/\s+/g, ''); // remove spaces
-    let arenaIconId = await findEmojiId(arenaName);
-    let badgeIdIcon = await getLink(currentData.badgeId + ".png");
-    description = `**${role} joined!**\n`;
-    description += `<:${arenaName}:${arenaIconId}>\`${member.trophies}\` [${member.name}](<https://royaleapi.com/player/${tag}>)`;
-    color = 0x00FF00 || 0x000000; // Green
-    try {
-      const user = await client.users.fetch(discordId);
-      const embed = new EmbedBuilder()
-        .setAuthor({ name: `${currentData.name} (${currentData.members}/50)`, iconURL: badgeIdIcon, url: `https://royaleapi.com/clan/${clantag}/` })
-        .setColor(color)
-        //.setTitle(title)
-        .setDescription(description)
-        .setFooter({ text: user.username, iconURL: user.displayAvatarURL() })
-        .setTimestamp();
-      changes.push(embed);
-    } catch (error) {
-      const embed = new EmbedBuilder()
-        .setAuthor({ name: `${currentData.name} (${currentData.members}/50)`, iconURL: badgeIdIcon, url: `https://royaleapi.com/clan/${clantag}/` })
-        .setColor(color)
-        //.setTitle(title)
-        .setDescription(description)
-        //.setFooter({ text: user.username, iconURL: user.displayAvatarURL() })
-        .setTimestamp();
-      changes.push(embed);
-    }
-  }
+  const processMembers = async (tags, action) => {
+    const promises = tags.map(async tag => {
+      const discordId = await db.get(`playertags.${tag}`);
+      const member = action === 'join' ? currentData.memberList.find(member => member.tag === tag)
+        : previousData.memberList.find(member => member.tag === tag);
+      let description, color;
+      tag = (member.tag).substring(1);
+      clantag = (clantag).substring(1);
+      let role = getRoleDisplayName(member.role);
+      let arenaName = (member.arena.name || "0_").replace(/[!'.,]/g, '').toLowerCase().replace(/\s+/g, '');
+      let arenaIconId = await findEmojiId(arenaName);
+      let badgeIdIcon = await getLink(currentData.badgeId + ".png");
+      description = `**${role} ${action}!**\n`;
+      description += `<:${arenaName}:${arenaIconId}>\`${member.trophies}\` [${member.name}](<https://royaleapi.com/player/${tag}>)`;
+      color = action === 'join' ? 0x00FF00 : 0xFF0000; // Green for join, Red for leave
 
-  for (let tag of membersLeft) {
-    const discordId = await db.get(`playertags.${tag}`)
-    const member = previousData.memberList.find(member => member.tag === tag);
-    let title, description, color;
-    tag = (member.tag).substring(1);
-    clantag = (clantag).substring(1);
-    let role = getRoleDisplayName(member.role);
-    let arenaName = member.arena.name.replace(/[!'.,]/g, '') // remove apostrophes
-      .toLowerCase() // convert to lowercase
-      .replace(/\s+/g, ''); // remove spaces
-    let arenaIconId = await findEmojiId(arenaName);
-    let badgeIdIcon = await getLink(currentData.badgeId + ".png");
-    description = `**${role} left!**\n`;
-    description += `<:${arenaName}:${arenaIconId}>\`${member.trophies}\` [${member.name}](<https://royaleapi.com/player/${tag}>)`;
-    color = 0xFF0000 || 0x000000; // Red
-    try {
-      const user = await client.users.fetch(discordId);
-      const embed = new EmbedBuilder()
-        .setAuthor({ name: `${currentData.name} (${currentData.members}/50)`, iconURL: badgeIdIcon, url: `https://royaleapi.com/clan/${clantag}/` })
-        .setColor(color)
-        //.setTitle(title)
-        .setDescription(description)
-        .setFooter({ text: user.username, iconURL: user.displayAvatarURL() })
-        .setTimestamp();
-      changes.push(embed);
-    } catch (error) {
-      const embed = new EmbedBuilder()
-        .setAuthor({ name: `${currentData.name} (${currentData.members}/50)`, iconURL: badgeIdIcon, url: `https://royaleapi.com/clan/${clantag}/` })
-        .setColor(color)
-        //.setTitle(title)
-        .setDescription(description)
-        //.setFooter({ text: user.username, iconURL: user.displayAvatarURL() })
-        .setTimestamp();
-      changes.push(embed);
-    }
-  }
+      try {
+        const user = await client.users.fetch(discordId);
+        const embed = new EmbedBuilder()
+          .setAuthor({ name: `${currentData.name} (${currentData.members}/50)`, iconURL: badgeIdIcon, url: `https://royaleapi.com/clan/${clantag}/` })
+          .setColor(color)
+          .setDescription(description)
+          .setFooter({ text: user.username, iconURL: user.displayAvatarURL() })
+          .setTimestamp();
+        return embed;
+      } catch (error) {
+        const embed = new EmbedBuilder()
+          .setAuthor({ name: `${currentData.name} (${currentData.members}/50)`, iconURL: badgeIdIcon, url: `https://royaleapi.com/clan/${clantag}/` })
+          .setColor(color)
+          .setDescription(description)
+          .setTimestamp();
+        return embed;
+      }
+    });
+
+    return await Promise.all(promises);
+  };
+
+  changes.push(...await processMembers(membersJoined, 'join'));
+  changes.push(...await processMembers(membersLeft, 'left'));
 
   return changes;
 }
+
 
 async function processMemberPromoDemo(db, previousData, currentData, clantag) {
   let changes = [];
@@ -172,8 +158,8 @@ async function processMemberPromoDemo(db, previousData, currentData, clantag) {
   const previousMembers = previousData.memberList;
   const currentMembers = currentData.memberList;
 
-  for (let currentMember of currentMembers) {
 
+  const promises = currentMembers.map(async (currentMember) => {
     const previousMember = previousMembers.find(member => member.tag === currentMember.tag);
     if (previousMember && previousMember.role !== currentMember.role) {
       const discordId = await db.get(`playertags.${currentMember.tag}`);
@@ -220,7 +206,9 @@ async function processMemberPromoDemo(db, previousData, currentData, clantag) {
         changes.push(embed);
       }
     }
-  }
+  });
+
+  await Promise.all(promises);
   return changes;
 }
 
@@ -258,6 +246,28 @@ async function processWarTrophyChange(previousData, currentData, clantag) {
   return changes;
 }
 
+async function processClanType(previousData, currentData, clantag) {
+  let changes = [];
+  let description, color;
+  const previousType = previousData.type;
+  const currentType = currentData.type;
+  let cleanClantag = clantag.substring(1);
+  if (previousType == currentType) return;
+  description = `**Clan Type Changed!**\n`;
+  description += `\`${getTypeDisplayName(previousType)}\` → \`${getTypeDisplayName(currentType)}\``;
+  color = 0xadd8e6 || 0x000000; // Blue
+  const badgeIdIcon = await getLink(currentData.badgeId + ".png");
+  const embed = new EmbedBuilder()
+    .setAuthor({ name: `${currentData.name}`, iconURL: badgeIdIcon, url: `https://royaleapi.com/clan/${cleanClantag}` })
+    .setColor(color)
+    //.setTitle(title)
+    .setDescription(description)
+    //.setFooter({ text: user.username, iconURL: user.displayAvatarURL() })
+    .setTimestamp();
+  changes.push(embed);
+  return changes;
+}
+
 function isPromotion(oldRole, newRole) {
   const roles = ['member', 'elder', 'coLeader', 'leader'];
   const oldRoleIndex = roles.indexOf(oldRole);
@@ -273,6 +283,15 @@ function getRoleDisplayName(role) {
     leader: "Leader"
   };
   return roleMap[role] || "Unknown Role"; // Default to "Unknown Role" if the role is not found
+}
+
+function getTypeDisplayName(clanType) {
+  const typeMap = {
+    inviteOnly: "Invite Only 🔐",
+    open: "Open 🔓",
+    closed: "Closed 🔒"
+  };
+  return typeMap[clanType] || "Unknown Clan Type";
 }
 
 async function getLink(key) {

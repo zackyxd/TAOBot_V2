@@ -4,4 +4,7 @@ config.json
 JSON_DATA/
 guildData/
 checkJson.json
-statsCredentials.json
+update
+doNotRemoveThesePlayers.txt
+deletedTheseMembers.txt
+googletest.js

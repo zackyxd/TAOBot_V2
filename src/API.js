@@ -23,7 +23,7 @@ async function fetchData(url, filename, print) {
     const data = response.data;
     const dataString = JSON.stringify(data, null, 2);
 
-    // print = false;
+    print = false;
     if (data && print === true) {
       const filePath = path.join(__dirname, '../JSON_DATA', `${filename}.json`);
       fs.writeFile(filePath, dataString, (err) => {

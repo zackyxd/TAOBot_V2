@@ -45,6 +45,12 @@ const loadEvents = (dir = path.join(__dirname, 'events')) => {
       loadEvents(filePath);
     } else if (file.endsWith('.js')) {
       const event = require(filePath);
+
+      if (event.eventKey === 'disable') {
+        console.log(`Skipping event: ${filePath}`);
+        return;
+      }
+
       if (event.once) {
         client.once(event.name, (...args) => event.execute(...args));
       } else {
@@ -54,16 +60,6 @@ const loadEvents = (dir = path.join(__dirname, 'events')) => {
   });
 };
 loadEvents();
-
-
-
-
-
-
-
-
-
-
 
 (async () => {
   try {

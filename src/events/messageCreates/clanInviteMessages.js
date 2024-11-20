@@ -111,6 +111,31 @@ module.exports = {
       return;
     }
 
+    // DELETE LATER
+    let notAllowedClantags = []
+    if (notAllowedClantags.includes(clantag)) {
+      const channelId = getClanInviteChannel;
+      const channel = await message.client.channels.fetch(channelId);
+      if (channel) {
+        try {
+          const sentMessage = await channel.send(`<@${message.author.id}>, we are not accepting new ${clanName} links here at the moment. Deleting this message in 7 seconds.`);
+
+          setTimeout(async () => {
+            try {
+              await sentMessage.delete();
+            }
+            catch (error) {
+              console.log("Couldn't delete unaccepted invite: " + error);
+            }
+          }, 7000);
+        }
+        catch (error) {
+          console.error(`Failed to send message: ${error.message}`);
+        }
+      }
+      return;
+    }
+
     // alreadyExpired = 0 means that it hasnt sent a ping yet for expiring.
     let clanLinkData = { ...clan, expiryTime: expiryTime, clanLink: clanLink, alreadyExpired: 0 }
     await db.set(`clans.${clantag}`, clanLinkData);

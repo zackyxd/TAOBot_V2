@@ -4,19 +4,16 @@ const API = require("../../API.js");
 const path = require('path');
 const fs = require('fs');
 const { createSuccessEmbed, createErrorEmbed, createExistEmbed } = require('../../utilities/embedUtility.js');
+const { channel } = require('diagnostics_channel');
 
 
 module.exports = {
   name: Events.MessageCreate,
-  eventKey: 'disable', //disable !dc
   async execute(message) {
     if (message.author.bot) return;
     const member = message.guild.members.cache.get(message.author.id);
     if (!member.permissions.has(PermissionsBitField.Flags.MuteMembers)) return;
-    if (!message.content.startsWith('!deletechannel') && !message.content.startsWith('!dc')) return;
-    // const channel = await message.client.channels.fetch(message.channel.id);
-    // await channel.delete();
-    // return;
+    if (!message.content.startsWith('!zacky')) return;
     const guild = message.guild;
 
     const dbPath = path.join(__dirname, `../../../guildData/${message.guild.id}.sqlite`);
@@ -24,7 +21,7 @@ module.exports = {
 
     let findDbChannel = await db.get(`massLinkChannels`);
     if (!findDbChannel) {
-      await message.channel.send({ embeds: [createExistEmbed(`No channels were added yet to be deleted.`)] });
+      await message.channel.send({ embeds: [createExistEmbed(`No channels were added yet to be affected.`)] });
       return;
     }
 
@@ -34,24 +31,19 @@ module.exports = {
       return;
     }
 
-    if (channelToDelete && channelToDelete.zacky === true) {
-      await message.channel.send({ embeds: [createErrorEmbed(`This channel has been Zackified, you cannot delete it with this command. `)] });
-      return;
-    }
+    let firstWord = message.content.split(' ')[1];
+    channelToDelete.zacky = firstWord === "remove" ? true : firstWord === "add" ? false : false
+    let description = firstWord === "remove" ? `You cannot delete this channel using the normal commands anymore.` : firstWord === "add" ? `You can now delete this channel using the normal commands again.` : null;
+    let color = firstWord === "remove" ? `Orange` : firstWord === "add" ? `Green` : null;
+    await db.set(`massLinkChannels.${message.channel.id}`, channelToDelete);
 
+    if (!description) return;
     let embed = new EmbedBuilder()
-      .setTitle(`Delete Channel`)
-      .setColor("Red")
-      .setDescription(`Are you sure you want to delete this channel?`)
-      .setFooter({ text: `0/2 needed` })
+      .setColor(color)
+      .setDescription(description)
 
-    let confirmButton = new ButtonBuilder()
-      .setCustomId(`confirmDeleteChannel_${message.channel.id}`)
-      .setLabel("Delete")
-      .setStyle(ButtonStyle.Danger);
     await message.delete();
-    const buttonRow = new ActionRowBuilder().addComponents(confirmButton);
-    await message.channel.send({ embeds: [embed], components: [buttonRow] });
+    await message.channel.send({ embeds: [embed] });
 
 
   }

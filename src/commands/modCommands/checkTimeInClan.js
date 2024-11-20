@@ -7,14 +7,14 @@ const { Events, PermissionsBitField, EmbedBuilder, Embed, SlashCommandBuilder, P
 
 
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName("find-time-in-clan")
-    .setDescription("Find how long someone has been in a certain clan consecutively")
-    .addStringOption(option =>
-      option.setName("abbreviation")
-        .setDescription("What is the abbreviation for the clan you want to check?")
-        .setRequired(true))
-    .setDefaultMemberPermissions(PermissionFlagsBits.MuteMembers),
+  // data: new SlashCommandBuilder()
+  //   .setName("find-time-in-clan")
+  //   .setDescription("Find how long someone has been in a certain clan consecutively")
+  //   .addStringOption(option =>
+  //     option.setName("abbreviation")
+  //       .setDescription("What is the abbreviation for the clan you want to check?")
+  //       .setRequired(true))
+  //   .setDefaultMemberPermissions(PermissionFlagsBits.MuteMembers),
 
   async execute(interaction) {
     if (!interaction.isChatInputCommand()) return;
@@ -75,6 +75,7 @@ async function checkLengthInClan(clantag) {
 
   let playerMap = new Map();
   let playerRoles = new Map(); // Map to store player roles
+  let checkClan = new Map();
   let apiCalls = []; // Array to store API call promises
 
   for (const item of rrData.items) {
@@ -115,6 +116,20 @@ async function checkLengthInClan(clantag) {
         let participants = standing.clan.participants;
         for (participant of participants) {
           let role = playerRoles.get(participant.tag);
+
+          let playerClan = "";
+          if (!checkClan.has(participant.tag)) {
+            let player = await API.getPlayer(participant.tag)
+            playerClan = player?.clan?.tag;
+            checkClan.set(participant.tag, playerClan);
+            // delay(75);
+          }
+          else {
+            playerClan = checkClan.get(participant.tag);
+          }
+
+          console.log(playerClan);
+          if (playerClan !== clantag) continue;
 
           // Ignore players with "coLeader" or "leader" role
           if (role === "coLeader" || role === "leader") continue;

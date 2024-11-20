@@ -1,4 +1,4 @@
-const { Events, PermissionsBitField } = require('discord.js');
+const { Events, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const { QuickDB } = require('quick.db');
 const API = require("../../API.js");
 const { createSuccessEmbed, createErrorEmbed } = require('../../utilities/embedUtility.js');
@@ -59,8 +59,12 @@ async function processMessage(message) {
           if (clanData && (await db.get(`users.${discordId}.replace-me`) === false || await db.get(`users.${discordId}.replace-me`) === undefined)) {
             const importantChannel = message.guild.channels.cache.get(clanData.importantChannel);
             if (importantChannel && !(member.permissions.has([PermissionsBitField.Flags.MuteMembers]))) {
-              await importantChannel.send({ embeds: [createErrorEmbed(`⚠️ <@${discordId}> (${checkPlayer.name}) asked to be replaced.`)] });
-              return;
+              let description = `⚠️ <@${discordId}> (${checkPlayer.name}) asked to be replaced.\n`
+              description += `-# See any context here: https://discord.com/channels/${guildId}/${message.channel.id}/${message.id}`
+              let replaceMeEmbed = new EmbedBuilder()
+                .setColor("Red")
+                .setDescription(description)
+              await importantChannel.send({ embeds: [replaceMeEmbed] });
             }
           }
 
@@ -76,10 +80,14 @@ async function processMessage(message) {
                     if (clanData && clanData.importantChannel) {
                       const importantChannel = message.guild.channels.cache.get(clanData.importantChannel);
                       if (importantChannel) {
-                        if (member.permissions.has([PermissionsBitField.Flags.MuteMembers])) {
-                          return;
+                        if (!member.permissions.has([PermissionsBitField.Flags.MuteMembers])) {
+                          let description = `⚠️ <@${discordId}> (${checkPlayer.name}) asked to be replaced.\n`
+                          description += `-# See any context here: https://discord.com/channels/${guildId}/${message.channel.id}/${message.id}`
+                          let replaceMeEmbed = new EmbedBuilder()
+                            .setColor("Red")
+                            .setDescription(description)
+                          await importantChannel.send({ embeds: [replaceMeEmbed] });
                         }
-                        await importantChannel.send({ embeds: [createErrorEmbed(`⚠️ <@${discordId}> (${player.name}) asked to be replaced.`)] });
                       }
                     }
                   }

@@ -18,6 +18,12 @@ module.exports = {
         .setName("user")
         .setDescription("@user to check")
         .setRequired(true)
+    )
+    .addStringOption((option) =>
+      option
+        .setName("user-id")
+        .setDescription("UserID to check, just @ anyone for the first option to use this")
+        .setRequired(false)
     ),
   // .setDefaultMemberPermissions(PermissionFlagsBits.MuteMembers),
 
@@ -27,7 +33,9 @@ module.exports = {
     await interaction.deferReply();
 
     let user = interaction.options.getMember("user"); // gets full user
-    const discordId = user.user.id;
+    let onlyDiscordId = interaction.options.get("user-id")?.value;
+    console.log(onlyDiscordId);
+    let discordId = onlyDiscordId || user.user.id;
 
     const dbPath = path.join(__dirname, `../../../guildData/${interaction.guild.id}.sqlite`);
     const db = new QuickDB({ filePath: dbPath });

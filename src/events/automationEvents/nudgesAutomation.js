@@ -48,7 +48,7 @@ const moment = require('moment-timezone');
 
 const postNudges = async (client) => {
   // weekend at 7pm -> 1am
-  cron.schedule('0 19,21,23,1 * * 5,6,7', () => {
+  cron.schedule('0 12,19,21,23,1 * * 5,6,7', () => {
     // cron.schedule('0 19,21,23,1 * * 5,6,7', () => {
     postAutoNudge(client);
   }, {
@@ -57,7 +57,7 @@ const postNudges = async (client) => {
   });
 
   // Thursday at 5-11pm
-  cron.schedule('0 19,21,23 * * 4', () => {
+  cron.schedule('0 12,19,21,23 * * 4', () => {
     postAutoNudge(client);
   }, {
     scheduled: true,
@@ -307,13 +307,10 @@ async function grabAutoNudge(clantag, db, botId, channelId, client, guildId) {
     let partials = false;
     let replaceMe = false;
 
+    let startTime = moment().tz("America/Phoenix").hour(21).minute(1).second(0); // Set start time to 9:01 PM
+    let endTime = startTime.clone().add(6, 'hours'); // Add 6 hours to include the next day's early hours
     let currentTime = moment().tz("America/Phoenix");
-    let startTime = moment().tz("America/Phoenix").hour(21).minute(1); // If it's after this time, keep pinging
-    let endTime = moment().tz("America/Phoenix").hour(3).minute(1); // If it's before this time, keep pinging
-    // Adjust the end time to the next day if it's before the start time
-    if (endTime.isBefore(startTime)) {
-      endTime.add(1, 'day');
-    }
+
     for (let attacks = 0; attacks <= 4; attacks++) {
       if (attacksUsed.hasOwnProperty(attacks)) {
         let players = [];
@@ -349,7 +346,7 @@ async function grabAutoNudge(clantag, db, botId, channelId, client, guildId) {
             const channel = await client.channels.fetch(channelId);
             const member = await guild.members.fetch(playerData.discordId);
 
-            if (currentTime.isBetween(startTime, endTime)) { // time between it should nudge people
+            if (currentTime.isAfter(startTime) && currentTime.isBefore(endTime)) { // time between it should nudge people
               if (channel && member && channel.permissionsFor(member).has(PermissionsBitField.Flags.ViewChannel)) {
                 players.push(`* <@${playerData.discordId}> (${player.playerName})`); // ping players who haven't pinged
               } else {

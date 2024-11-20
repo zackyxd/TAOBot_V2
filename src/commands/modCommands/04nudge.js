@@ -21,14 +21,14 @@ module.exports = {
         .setRequired(true)
     )
     .addBooleanOption(option =>
+      option.setName("skip")
+        .setDescription("Bypass the block on nudging if nudging too frequently")
+        .setRequired(false))
+    .addBooleanOption(option =>
       option.setName("all")
         .setDescription("Nudge everyone in this clan")
         .setRequired(false)
     )
-    .addBooleanOption(option =>
-      option.setName("skip")
-        .setDescription("Bypass the block on nudging if nudging too frequently")
-        .setRequired(false))
     .setDefaultMemberPermissions(PermissionFlagsBits.MuteMembers),
 
   async execute(interaction) {
@@ -539,13 +539,29 @@ async function getAttacksNoPings(clantag, db, nudgerDiscordId, interaction) {
     let partials = false;
     let replaceMe = false;
 
-    let currentTime = moment().tz("America/Phoenix");
-    let startTime = moment().tz("America/Phoenix").hour(21).minute(1); // If it's after this time, keep pinging
-    let endTime = moment().tz("America/Phoenix").hour(1).minute(1); // If it's before this time, keep pinging
+    // let currentTime = moment().tz("America/Phoenix");
+    // let currentTime = moment().tz("America/Phoenix").hour(1).minute(0).second(0).day(8);
+    // let startTime = moment().tz("America/Phoenix").day(5).hour(21).minute(1); // If it's after this time, keep pinging
+    // let endTime = moment().tz("America/Phoenix").day(6).hour(3).minute(1); // If it's before this time, keep pinging
     // Adjust the end time to the next day if it's before the start time
-    if (endTime.isBefore(startTime)) {
-      endTime.add(1, 'day');
-    }
+    // if (endTime.isBefore(startTime)) {
+    //   endTime.add(1, 'day');
+    // }
+
+    let startTime = moment().tz("America/Phoenix").hour(21).minute(1).second(0); // Set start time to 9:01 PM
+    let endTime = startTime.clone().add(6, 'hours'); // Add 6 hours to include the next day's early hours
+    let currentTime = moment().tz("America/Phoenix");
+
+    // console.log(`Current Time: ${currentTime.format()}`);
+    // console.log(`Start Time: ${startTime.format()}`);
+    // console.log(`End Time: ${endTime.format()}`);
+    // console.log(currentTime.isAfter(startTime), currentTime.isBefore(endTime));
+
+    // for (let i = 0; i <= 24; i++) {
+    //   currentTime = moment().tz("America/Phoenix").hour(i).minute(0).second(0).date(8).month(10).year(2024);
+    //   console.log(`Hour ${i}:`, currentTime.isAfter(startTime), currentTime.isBefore(endTime));
+    // }
+
     for (let attacks = 0; attacks <= 4; attacks++) {
       if (attacksUsed.hasOwnProperty(attacks)) {
         let players = [];
@@ -560,6 +576,7 @@ async function getAttacksNoPings(clantag, db, nudgerDiscordId, interaction) {
           }
 
           if ((player.role === 'coLeader' || player.role === 'leader') && discordAccount && discordAccount.pingCo !== true) {
+            console.log(player.role, discordAccount);
             players.push(`* **${player.playerName}**`);
             continue;
           }
@@ -581,7 +598,7 @@ async function getAttacksNoPings(clantag, db, nudgerDiscordId, interaction) {
             const channel = interaction.channel;
             const member = await interaction.guild.members.fetch(playerData.discordId);
 
-            if (currentTime.isBetween(startTime, endTime)) {
+            if (currentTime.isAfter(startTime) && currentTime.isBefore(endTime)) {
               if (channel && member && channel.permissionsFor(member).has(PermissionsBitField.Flags.ViewChannel)) {
                 players.push(`* <@${playerData.discordId}> (${player.playerName})`); // ping players who havent pinged
               }

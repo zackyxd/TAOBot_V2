@@ -11,7 +11,7 @@ const moment = require('moment-timezone');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("ping-coleader")
-    .setDescription("Set a coleader to be pinged in nudges no matter what")
+    .setDescription("Set a coleader to be pinged in nudges")
     .addUserOption((option) =>
       option.setName("user").setDescription("@user to link").setRequired(true)
     )

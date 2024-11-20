@@ -195,7 +195,7 @@ module.exports = {
           }
 
           let confirmationData = await db.get(`confirmationData.${clan}`) || { count: 0, users: [] };
-          if (!confirmationData.users.includes(interaction.user.id) || confirmationData.count < 1) {
+          if (!confirmationData.users.includes(interaction.user.id)) {
             confirmationData.count += 1;
             confirmationData.users.push(interaction.user.id);
             await db.set(`confirmationData.${clan}`, confirmationData);
@@ -206,6 +206,8 @@ module.exports = {
             const updatedEmbed = new EmbedBuilder(embed).setFooter({ text: `${embed.footer.text.split('|')[0].trim()} | (${confirmationData.count}/2)` })
             // Edit the message with the updated embed
             await message.edit({ embeds: [updatedEmbed] });
+          }
+          if (confirmationData.count < 2) {
             return;
           }
 
@@ -347,6 +349,13 @@ module.exports = {
         }
 
       }
+
+      // if (interaction.customId.startsWith(`confirmCreateChannel`)) {
+      //   await interaction.deferUpdate();
+      //   const interactionCreator = await interaction.guild.members.fetch(interaction.user.id);
+      // }
+
+
     }
   }
 }

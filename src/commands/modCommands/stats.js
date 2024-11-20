@@ -40,6 +40,7 @@ module.exports = {
 
     let rolesSheet4 = [
       // tao
+      { id: '1280599632262729779', threshold: 220 },
       { id: '1056432341322584104', threshold: 210 },
       { id: '1056432268345876610', threshold: 200 },
       { id: '1056428973418098708', threshold: 190 },
@@ -54,6 +55,7 @@ module.exports = {
       rows5 = await readSheet(5);
       rows4 = await readSheet(4)
     } catch (error) {
+      console.error(error);
       await interaction.editReply({ embeds: [createErrorEmbed(`Error with command, ping Zacky`)] });
       return;
     }
@@ -68,7 +70,6 @@ module.exports = {
       const fameAverage = parseFloat(row[3]);
       const fameData = row.slice(4);
       const last3Wars = [];
-      console.log(lastClan);
 
       for (let i = 0; i < fameData.length; i += 2) {
         const fame = parseInt(fameData[i]);
@@ -104,6 +105,8 @@ module.exports = {
       }
     } catch (error) {
       console.log("No rr data");
+      await interaction.editReply({ embeds: [createErrorEmbed(`No RR data, stats didn't work, contact Zacky :(`)] });
+      return;
     }
     // Track processed clans
     const processedClans = new Set();
@@ -131,7 +134,6 @@ module.exports = {
         // const clantag = Object.keys(clans).find(tag => clans[tag].abbreviation === clan);
         let clanDb = await db.get(`clans.${clantag}.clanName`);
         let clanName = clanDb || "Other";
-        console.log(clanName);
         let playerHighestRoles = {};
 
         const clanWarCategory = clans[clantag]?.warCategory;
@@ -143,7 +145,10 @@ module.exports = {
           const highestRole = roles.find(role => player.fameAverage >= role.threshold);
           if (!highestRole) continue;
 
-          // Check if the player has 36 or more attacks
+          // Check if at least 3 weeks
+          const participatedWeeks = player.last3Wars.length;
+          if (participatedWeeks < 3) continue;
+          // Check if the player has 28 or more attacks
           const totalAttacks = player.last3Wars.reduce((sum, war) => sum + war.attacks, 0);
           if (totalAttacks < 28) continue;
           // console.log(player.playerName, totalAttacks);
@@ -312,8 +317,16 @@ module.exports = {
 
 async function readSheet(group) {
   const sheets = google.sheets('v4');
+  let credentials;
+  try {
+    credentials = JSON.parse(process.env.STATSCREDENTIALS);
+  } catch (error) {
+    console.error('Error parsing JSON:', error);
+    return;
+  }
+
   const auth = new google.auth.GoogleAuth({
-    keyFile: JSON.parse(process.env.STATSCREDENTIALS),
+    credentials: credentials,
     scopes: ["https://www.googleapis.com/auth/spreadsheets"],
   });
 

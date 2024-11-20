@@ -35,27 +35,47 @@ async function processQueue() {
     const dbPath = API.findFileUpwards(__dirname, `guildData/${guildId}.sqlite`);
     const db = new QuickDB({ filePath: dbPath });
 
-    const regex = /!(\w+link)\b/;
+    // const regex = /!(\w+link)\b/i;
+    const regex = /!(\w+)\b/;
+
+
     const match = (message.content).match(regex);
     if (!match) continue;
-    let clanAbbrev = match[1].replace('link', '');
+    let clanAbbrev = match[1].replace(/link/i, '').toLowerCase();
+    // console.log(clanAbbrev);
+    // let clanAbbrev = match[1];
+    // Check if the input message contains an underscore
+    // if (clanAbbrev.includes('_')) {
+    //   console.log("Input contains an underscore; continuing to next iteration.");
+    //   continue; // Skip this iteration if there is an underscore in the input
+    // }
     const clans = await db.get(`clans`);
-    let clantagForClan = "";
+    let clantagForClan;
     for (const clantag in clans) {
       if (clans[clantag].abbreviation === clanAbbrev) {
         clantagForClan = clantag;
       }
     }
-    console.log(clantagForClan);
+    // if someone does previous !a1link command that contains "link"
+    // if (!clantagForClan) {
+    //   clanAbbrev = match[1].replace('link', '');
+    //   for (const clantag in clans) {
+    //     if (clans[clantag].abbreviation === clanAbbrev) {
+    //       clantagForClan = clantag;
+    //     }
+    //   }
+    // }
+
     if (!clantagForClan) {
-      await message.channel.send({ embeds: [createErrorEmbed(`\`${clanAbbrev}\` is not a valid clan abbreviation.`)] });
-      if (message.content.trim() === `!${clanAbbrev}link`) {
-        try {
-          await message.delete();
-        } catch (error) {
-          console.log("Couldn't delete quick clan link.", error);
-        }
-      }
+      // await message.channel.send({ embeds: [createErrorEmbed(`\`${clanAbbrev}\` is not a valid clan abbreviation.`)] });
+      // if (message.content.trim() === `!${clanAbbrev}link`) {
+      // if (message.content.trim() === `!${clanAbbrev}link` || message.content.trim() === `!${clanAbbrev}`) {
+      //   try {
+      //     await message.delete();
+      //   } catch (error) {
+      //     console.log("Couldn't delete quick clan link.", error);
+      //   }
+      // }
       continue;
     }
 
@@ -66,8 +86,12 @@ async function processQueue() {
       continue;
     }
 
-
-
+    // DELETE LATER
+    let notAllowedClantags = []
+    if (notAllowedClantags.includes(clanInfo.clantag)) {
+      await message.channel.send({ embeds: [createErrorEmbed(`Sorry, ${(clanInfo.abbreviation).toUpperCase()} links cannot be generated at the current time.`)] });
+      continue;
+    }
 
     if (clanInfo && !clanInfo.clanLink) {
       await message.channel.send({ embeds: [createExistEmbed(`\`${clanName}\` does not have a clan invite available.`)] });
@@ -81,9 +105,11 @@ async function processQueue() {
         .setDescription(`## [Click here to join ${clanName}](<${clanInfo.clanLink}>)\n-# Expires: <t:${clanInfo.expiryTime}:R>`) // Make the message bold
       // .setFooter({ text: convertUnixToTime(clanInfo.expiryTime) })
       await message.channel.send({ embeds: [embed] });
+      await message.channel.send(`-# [Click this to join ${clanName}](<${clanInfo.clanLink}>) Expires: <t:${clanInfo.expiryTime}:R>`);
     }
 
-    if (message.content.trim() === `!${clanAbbrev}link`) {
+    // if (message.content.trim() === `!${clanAbbrev}link`) {
+    if (message.content.trim() === `!${clanAbbrev}link` || message.content.trim() === `!${clanAbbrev}`) {
       try {
         await message.delete();
       } catch (error) {

@@ -7,10 +7,12 @@ const Database = require('better-sqlite3');
 const { QuickDB } = require("quick.db")
 const fs = require('fs');
 const { checkClanChanges } = require('./automationEvents/clanlogsAutomation');
-const { checkAttacks } = require('./automationEvents/attacksAutomation');
-const { checkRace } = require('./automationEvents/scoresAutomation');
+// const { checkAttacks } = require('./automationEvents/attacksAutomation');
+// const { checkRace } = require('./automationEvents/scoresAutomation');
 const { updateClanInvites } = require('./automationEvents/createInviteLinkAutomation');
 const { postNudges } = require('./automationEvents/nudgesAutomation');
+const { findPlayerAttacks } = require('./dataUpdates/findPlayerAttacksInClans.js');
+const { checkRace } = require('./automationEvents/endOfWarDayStats.js');
 
 
 module.exports = {
@@ -24,6 +26,7 @@ module.exports = {
     });
 
     // every thursday at 3am
+    // resetPlayerData(client);
     cron.schedule('0 3 * * 4', async function () {
       // cron.schedule('*/5 * * * * *', async function () {
       // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
@@ -44,7 +47,7 @@ module.exports = {
       timezone: 'America/Phoenix'
     });
 
-    checkAttacks(client);
+    // checkAttacks(client);
     checkRace(client);
     postNudges(client);
     setInterval(async () => {
@@ -55,8 +58,7 @@ module.exports = {
       await checkClanChanges(client);
     }, 180000);
 
-
-
+    findPlayerAttacks(client);
   }
 }
 

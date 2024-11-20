@@ -3,6 +3,7 @@ const { QuickDB } = require("quick.db")
 const path = require('path');
 const fs = require('fs');
 
+// Used to do automatic stats. Run when new clans wanted to add to it. 
 async function updateWarCategory() {
   const dbPath = path.join(__dirname, `./guildData/722956243261456536.sqlite`);
   const db = new QuickDB({ filePath: dbPath });

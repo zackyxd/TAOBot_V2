@@ -7,6 +7,7 @@ const { createSuccessEmbed, createErrorEmbed } = require('../../utilities/embedU
 
 module.exports = {
   name: Events.MessageCreate,
+  eventKey: 'disable', // disable specific event
   async execute(message) {
     if (message.author.bot) return;
     const member = message.guild.members.cache.get(message.author.id);
@@ -38,10 +39,12 @@ module.exports = {
     const channel = await guild.channels.create({
       name: `members-${count}`, // Ensure the name field is defined
       type: ChannelType.GuildText,
-      // parent: '1182482429810847807', // my guild category id
-      parent: "1283051581834530978", // TAO category id
+      parent: '1182482429810847807', // my guild category id
+      // parent: "1283051581834530978", // TAO category id
       permissionOverwrites: null, // Inherit permissions from the category
     });
+
+    console.log(channel);
 
 
     let linkedAccounts = [];
@@ -84,12 +87,16 @@ module.exports = {
       await message.channel.send({ embeds: [createSuccessEmbed(`Created <#${channel.id}> with ${mentionedUsers.size} members.\n-# Please check the channel above if you were pinged.`)] });
     }
 
-    const mentions = mentionedUsers.map(user => `<@${user.id}>`).join(' ');
-    await channel.send(`Attention: ${mentions}\nCreated by <@${message.author.id}>`);
+    const mentions = matches.map(user => `${user}`).join(' ');
+    let newMessage = await channel.send(`Attention: ${mentions}\nCreated by <@${interaction.user.id}>`);
+    let messageId = newMessage.id;
+    // const attachment = new AttachmentBuilder((API.findFileUpwards(__dirname, "movinggif.gif")));
+    // await channel.send({ files: [attachment] });
     await db.set(`massLinkChannels.${channel.id}`, {
       "channelId": channel.id,
       "users": [],
-      "playersAdded": linkedAccounts
+      "playersAdded": linkedAccounts,
+      "originalMessage": messageId,
     });
   }
 }

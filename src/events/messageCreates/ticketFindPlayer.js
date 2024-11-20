@@ -1,7 +1,7 @@
 const { Events, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const { QuickDB } = require('quick.db');
 const API = require("../../API.js");
-const { createSuccessEmbed, createErrorEmbed } = require('../../utilities/embedUtility.js');
+const { createSuccessEmbed, createErrorEmbed, createExistEmbed } = require('../../utilities/embedUtility.js');
 const Database = require('better-sqlite3');
 const fs = require('fs');
 const path = require('path');
@@ -24,7 +24,7 @@ module.exports = {
 
     let parsedMessage = (message.content).split(/\s+/);
     let validTags = new Set();
-
+    let luna = false;
     let promises = parsedMessage.map(async (msg) => {
 
 
@@ -38,17 +38,19 @@ module.exports = {
         if (tag.charAt(0) !== '#') {
           tag = '#' + tag;
         }
+        luna = checkForLuna(tag);
         let account = await API.getPlayer(match[1]);
         if (!account.data) {
           validTags.add(tag);
         }
       } else if (msg.length >= 3 && msg.length <= 12) {
         msg = msg.toUpperCase();
-        msg = msg.replace(/o/gi, '0'); // Replace 'O' and 'o' with '0'
+        msg = msg.replace(/[^\w]/g, '').replace(/o/gi, '0') // Replace 'O' and 'o' with '0'. And only a-Z, 0-9
         let tag = msg;
         if (tag.charAt(0) !== '#') {
           tag = '#' + tag;
         }
+        luna = checkForLuna(tag);
         let account = await API.getPlayer(tag);
         if (!account.data) {
           validTags.add(tag);
@@ -58,6 +60,17 @@ module.exports = {
     });
 
     await Promise.all(promises);
+
+    if (luna) {
+      let channelId = "890405194897190972" // Management-HQ channel id for AFAM
+      const channel = message.guild.channels.cache.get(channelId);
+      if (channel) {
+        await channel.send({ embeds: [createExistEmbed(`One of Luna's accounts has been posted with the tag(s): ${(Array.from(validTags)).join(", ")} in <#${message.channel.id}>`)] });
+
+        await message.channel.send({ content: `Hey <@${message.author.id}>, Thank you for providing your playertag. One of our coleaders will be with you as soon as possible!` });
+        return;
+      }
+    }
 
     if (validTags.size === 0) {
       console.log("No valid accounts found.");
@@ -233,7 +246,11 @@ async function playerStats(account) {
   description += `__**Card Levels**__ <:cards:1196602848411127818>\n<:Evolutions:1248347132088418478>: ${evolutions}\n<:experience15:1196504104256671794>: ${level15}\n<:experience14:1196504101756874764>: ${level14}\n<:experience13:1196504100200796160>: ${level13}`;
   let levelIcon = findEmojiId(`experience${level}`)
   //const fileReturn = new AttachmentBuilder(`arenas/league${currentPOL}.png`);
-  let playerLeagueIcon = getLink("league" + account.currentPathOfLegendSeasonResult.leagueNumber + ".png");
+  let playerLeague = account?.currentPathOfLegendSeasonResult?.leagueNumber;
+  if (!playerLeague) {
+    playerLeague = "1";
+  }
+  let playerLeagueIcon = getLink("league" + playerLeague + ".png")
   const embedReturn = new EmbedBuilder()
     .setTitle(`${name} <:experience${level}:${levelIcon}>\n`)
     .setThumbnail(playerLeagueIcon)
@@ -255,11 +272,15 @@ function getLink(key) {
   // Read the JSON file
   const data = fs.readFileSync('imageLinks.json');
   const imageLinks = JSON.parse(data);
-
+  if (key === undefined || key === null) {
+    key = "league0";
+  }
+  console.log(key, typeof key);
   // Check if the key exists in the JSON object
   if (imageLinks.hasOwnProperty(key)) {
     return imageLinks[key]; // Return the link associated with the key
-  } else {
+  }
+  else {
     return 'Key not found'; // Key does not exist in the JSON object
   }
 }
@@ -314,4 +335,12 @@ function checkLevel(level, rarity) {
     actualLevel = level + 10;
     return actualLevel;
   }
+}
+
+function checkForLuna(tag) {
+  let LUNA_TAGS = ["#9882QL8RU", "#208JP9JVL", "#LVPYCYQCR", "#2Y2GRYC2", "#2YJQJ0902", "#Y22RPJQU9", "#92RR2J0P8", "#9G9U0UVY9", "#QPCJ8V0L", "#UR0VR88JV", "#800P9GGV", "#VPL98P8", "#CJQJGG8VV", "#UP2JL8U2P", "#9YG0PYCLL", "#JPLL82VJG"]
+  if (LUNA_TAGS.includes(tag)) {
+    return true;
+  }
+  return false;
 }

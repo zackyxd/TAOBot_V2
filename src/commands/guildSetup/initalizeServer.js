@@ -19,7 +19,7 @@ module.exports = {
     const db = new QuickDB({ filePath: dbPath });
 
     const guildInitialized = await db.get(`guilds.${interaction.guild.id}.initialized`);
-
+    await interaction.guild.members.fetch();
     if (guildInitialized) {
       await interaction.editReply({ embeds: [createExistEmbed("Server is already initialized.")] });
     }
