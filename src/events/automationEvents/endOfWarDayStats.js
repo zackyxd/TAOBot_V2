@@ -12,8 +12,8 @@ require('dotenv/config');
 
 
 const checkRace = async (client) => {
-  cron.schedule('15-59 2 * * *', async function () {
-    // cron.schedule('*/5 * * * * *', async function () {
+  // cron.schedule('15-59 2 * * *', async function () {
+  cron.schedule('*/5 * * * * *', async function () {
     // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
     // Your code here
     postRace(client);
@@ -61,7 +61,7 @@ async function postRace(client) {
         }
         // console.log("Old vs new periodindex:", oldRaceInfo.periodIndex, newPeriodIndex);
         let raceType = checkWhichTypeRace(oldRaceInfo); // Get race type. 0, 1, 2
-        if (!isNewDay(oldRaceInfo.attacks, newAttacks, oldRaceInfo.periodIndex, raceData.periodIndex)) {
+        if (!isNewDay(oldRaceInfo.attacks, newAttacks, oldRaceInfo.periodIndex, raceData.periodIndex, oldRaceInfo.clanName)) {
           console.log("Not new day, update database with new data");
           await addToDatabase(clantag, raceData, guild.id)
           continue;
@@ -71,7 +71,7 @@ async function postRace(client) {
           // Regular War Day
           console.log("War Day");
           let allClans = getAllClans(oldRaceInfo);
-          embed = await outputWarDayInfo(allClans, clantag, oldRaceInfo.periodIndex, oldRaceInfo.sectionIndex);
+          embed = await outputWarDayInfo(allClans, clantag, oldRaceInfo.periodIndex, oldRaceInfo.sectionIndex, oldRaceInfo.clanName);
           embed2 = await remainingAttacks(oldRaceInfo);
         }
         else if (raceType === 2) {
@@ -103,6 +103,7 @@ async function postRace(client) {
 
 function isNewDay(oldAttacks, newAttacks, oldPeriodIndex, newPeriodIndex) {
   // If new - old is negative, means it's a new day.
+  return true;
   if (newAttacks - oldAttacks < 0) {
     console.log("New day by attacks");
     return true;
@@ -132,7 +133,7 @@ async function getNewData(clantag) {
   if (clantag.charAt(0) !== "#") clantag = "#" + clantag;
   const data = await API.getCurrentRiverRace(clantag);
   // console.log("Returning data with tag:", clantag);
-  return { clantag, data };
+  return { clantag, data, data };
 
   // const mockDataPath = path.resolve(__dirname, 'mockData.json');
   // const data = JSON.parse(fs.readFileSync(mockDataPath, 'utf8'));
@@ -245,7 +246,7 @@ function getImportantRaceInfo(data, i) {
   }
 
   // console.log("decks left", 200 - clan.decksUsed);
-  console.log("FAME EARNED HERE", fameEarned);
+  // console.log("FAME EARNED HERE", fameEarned);
   return {
     clanName: clan.clanName,
     clantag: clan.clantag,
@@ -279,7 +280,7 @@ function round(value, decimals) {
 }
 
 
-async function outputWarDayInfo(clans, ogClantag, periodIndex, sectionIndex) {
+async function outputWarDayInfo(clans, ogClantag, periodIndex, sectionIndex, mainClanName) {
   // console.log("Clans output:", clans);
 
   let day = (periodIndex % 7) - 2;
@@ -327,7 +328,7 @@ async function outputWarDayInfo(clans, ogClantag, periodIndex, sectionIndex) {
 
   let tag = ogClantag.replace(/#/g, "");
   const embedReturn = new EmbedBuilder()
-    .setTitle(dayType)
+    .setTitle(`__${mainClanName}__`)
     .setURL(`https://royaleapi.com/clan/${tag}/war/race`)
     .setDescription(description)
     .setColor('Purple')
@@ -337,8 +338,8 @@ async function outputWarDayInfo(clans, ogClantag, periodIndex, sectionIndex) {
   return embedReturn;
 }
 
-async function outputColoInfo(clans, ogClantag, periodIndex) {
-  console.log("clans:", clans)
+async function outputColoInfo(clans, ogClantag, periodIndex, mainClanName) {
+  // console.log("clans:", clans)
   let day = (periodIndex % 7) - 2;
   let dayType = getDayType(2);
   clans.sort(function (a, b) {
@@ -370,7 +371,7 @@ async function outputColoInfo(clans, ogClantag, periodIndex) {
   }
   let tag = ogClantag.replace(/#/g, "");
   const embedReturn = new EmbedBuilder()
-    .setTitle("__Colosseum__")
+    .setTitle(`__${mainClanName}__`)
     .setURL(`https://royaleapi.com/clan/${tag}/war/race`)
     .setDescription(description)
     .setColor('Purple')
@@ -441,7 +442,8 @@ async function addToDatabase(clantag, data, guildId) {
     sectionIndex: data.sectionIndex,
     periodType: data.periodType,
     clantag: clantag,
-    playersRemaining: playersRemainingForAttacks
+    playersRemaining: playersRemainingForAttacks,
+    clanName: data.clan.name
   });
   // console.log(test);
 }
@@ -537,7 +539,7 @@ async function remainingAttacks(data) {
     else {
       description += "**Remove these attacks.**\n"
       for (let i = 4; i >= 1; i--) {
-        if (attacksUsed[i].length >= 0) {
+        if (attacksUsed[i].length > 0) {
           if (i !== 0) {
             description += '\n';
           }

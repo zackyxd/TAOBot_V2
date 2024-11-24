@@ -168,6 +168,7 @@ async function getAttacksAll(clantag, db, nudgerDiscordId, interaction) {
       }
       else {
         member.playertag = participant.tag;
+        member.playerName = participant.name;
       }
 
       let attacksUsedToday = -999; // member.attacksUsed (for today)

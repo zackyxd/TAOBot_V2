@@ -82,6 +82,8 @@ module.exports = {
           grabPreviousPlayertagData = {};
         }
         grabPreviousPlayertagData.discordId = discordId;
+        grabPreviousPlayertagData.playerName = crAccount.name;
+        console.log("Should be setting playertag as:", crAccount.name, discordId);
         await interaction.editReply({ embeds: [await getPlayerEmbed(crAccount, user)] });
         await db.set(`playertags.${playertag}`, grabPreviousPlayertagData);
         try {
