@@ -36,7 +36,7 @@ module.exports = {
       try {
         guild = await client.guilds.fetch(guildId);
         channel = await guild.channels.cache.get(channelId);
-        user = await guild.members.fetch(discordId);
+        // user = await guild.members.fetch(discordId);
       } catch (error) {
         console.log("Error with saving user");
         await channel.send({ embeds: [createErrorEmbed(`Error with user, no data was saved.`)] })
