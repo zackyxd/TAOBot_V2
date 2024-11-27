@@ -10,8 +10,10 @@ module.exports = {
   name: Events.ChannelUpdate,
   async execute(oldChannel, newChannel) {
     // change below to and 
-    if (oldChannel.name !== newChannel.name && newChannel.name.includes('closed')) {
-      console.log(`Channel name updated to include "closed": ${newChannel.name}`);
+    // console.log(oldChannel, newChannel)
+    if (oldChannel.parentId !== newChannel.parentId && newChannel.name.includes('ticket')) {
+      // if (oldChannel.name !== newChannel.name && newChannel.name.includes('closed')) {
+      console.log(`Channel parent updated and includes "ticket": ${newChannel.name}`);
       // You can add additional actions here, such as sending a message to a specific channel
       let guildId = newChannel.guildId;
       let channelId = newChannel.id;
@@ -36,7 +38,7 @@ module.exports = {
       try {
         guild = await client.guilds.fetch(guildId);
         channel = await guild.channels.cache.get(channelId);
-        // user = await guild.members.fetch(discordId);
+        user = await guild.members.fetch(discordId);
       } catch (error) {
         console.log("Error with saving user");
         await channel.send({ embeds: [createErrorEmbed(`Error with user, no data was saved.`)] })
@@ -80,14 +82,14 @@ module.exports = {
             grabPreviousPlayertagData.discordId = discordId;
             await db.set(`playertags.${tag}`, grabPreviousPlayertagData);
 
-            try {
-              if (!nameWasChanged) {
-                await user.setNickname(crAccount.name)
-                nameWasChanged = true;
-              }
-            } catch (error) {
-              console.log("Couldnt change name: " + error)
-            }
+            // try {
+            //   if (!nameWasChanged) {
+            //     await user.setNickname(crAccount.name)
+            //     nameWasChanged = true;
+            //   }
+            // } catch (error) {
+            //   console.log("Couldnt change name: " + error)
+            // }
 
 
             const removeLink = new ButtonBuilder()
