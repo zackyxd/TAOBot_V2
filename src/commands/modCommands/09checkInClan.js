@@ -116,8 +116,26 @@ module.exports = {
         pingMessage = "**Every in this channel has an account in the clan.**"
       }
 
-      await interaction.channel.send(pingMessage);
-      await interaction.editReply({ embeds: [createSuccessEmbed(`Sent.`)] });
+      await interaction.editReply({ embeds: [createSuccessEmbed(`Sent the ping & link.`)] });
+
+      let clanInfo = await db.get(`clans.${clanData.tag}`)
+      if (clanInfo && clanInfo) {
+        if (clanInfo && !clanInfo.clanLink) {
+          await interaction.channel.send({ embeds: [createExistEmbed(`\`${clanInfo.clanName}\` does not have a clan invite available.`)] });
+        }
+        if (clanInfo && clanInfo.clanLink && clanInfo.alreadyExpired === 1) {
+          await interaction.channel.send({ embeds: [createErrorEmbed(`The link for \`${clanInfo.clanName}\` is currently expired. Please generate a new invite.`)] });
+        }
+        if (clanInfo && clanInfo.clanLink && clanInfo.alreadyExpired === 0) {
+          let embed = new EmbedBuilder()
+            .setColor('#00FF00') // Green color for success
+            .setDescription(`## [Click here to join ${clanInfo.clanName}](<${clanInfo.clanLink}>)\n-# Expires: <t:${clanInfo.expiryTime}:R>`) // Make the message bold
+          // .setFooter({ text: convertUnixToTime(clanInfo.expiryTime) })
+          await interaction.channel.send(pingMessage);
+          await interaction.channel.send({ embeds: [embed] });
+          await interaction.channel.send(`-# [Click this to join ${clanInfo.clanName}](<${clanInfo.clanLink}>) Expires: <t:${clanInfo.expiryTime}:R>`);
+        }
+      }
       return;
     }
 
