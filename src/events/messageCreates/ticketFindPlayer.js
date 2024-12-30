@@ -24,7 +24,6 @@ module.exports = {
 
     let parsedMessage = (message.content).split(/\s+/);
     let validTags = new Set();
-    let luna = false;
     let promises = parsedMessage.map(async (msg) => {
 
 
@@ -38,7 +37,6 @@ module.exports = {
         if (tag.charAt(0) !== '#') {
           tag = '#' + tag;
         }
-        luna = checkForLuna(tag);
         let account = await API.getPlayer(match[1]);
         if (!account.data) {
           validTags.add(tag);
@@ -50,7 +48,6 @@ module.exports = {
         if (tag.charAt(0) !== '#') {
           tag = '#' + tag;
         }
-        luna = checkForLuna(tag);
         let account = await API.getPlayer(tag);
         if (!account.data) {
           validTags.add(tag);
@@ -60,17 +57,6 @@ module.exports = {
     });
 
     await Promise.all(promises);
-
-    if (luna) {
-      let channelId = "890405194897190972" // Management-HQ channel id for AFAM
-      const channel = message.guild.channels.cache.get(channelId);
-      if (channel) {
-        await channel.send({ embeds: [createExistEmbed(`One of Luna's accounts has been posted with the tag(s): ${(Array.from(validTags)).join(", ")} in <#${message.channel.id}>`)] });
-
-        await message.channel.send({ content: `Hey <@${message.author.id}>, Thank you for providing your playertag. One of our coleaders will be with you as soon as possible!` });
-        return;
-      }
-    }
 
     if (validTags.size === 0) {
       console.log("No valid accounts found.");
@@ -337,10 +323,3 @@ function checkLevel(level, rarity) {
   }
 }
 
-function checkForLuna(tag) {
-  let LUNA_TAGS = ["#9882QL8RU", "#208JP9JVL", "#LVPYCYQCR", "#2Y2GRYC2", "#2YJQJ0902", "#Y22RPJQU9", "#92RR2J0P8", "#9G9U0UVY9", "#QPCJ8V0L", "#UR0VR88JV", "#800P9GGV", "#VPL98P8", "#CJQJGG8VV", "#UP2JL8U2P", "#9YG0PYCLL", "#JPLL82VJG"]
-  if (LUNA_TAGS.includes(tag)) {
-    return true;
-  }
-  return false;
-}

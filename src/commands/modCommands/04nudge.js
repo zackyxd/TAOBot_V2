@@ -73,9 +73,10 @@ module.exports = {
         sendMessage = await getAttacksNoPings(clantag, db, interaction.user.id, interaction)
       }
       if (!sendMessage) {
-        interaction.editReply({ embeds: [createErrorEmbed("Error sending message, try again.")] });
+        await interaction.followUp({ embeds: [createErrorEmbed("Error sending message, try again.")], ephemeral: true });
         return;
       }
+
       await interaction.channel.send(sendMessage);
       await interaction.editReply("Sending Nudge");
 
@@ -376,6 +377,12 @@ async function getAttacksAll(clantag, db, nudgerDiscordId, interaction) {
       reply += `⚠️ Needs to be replaced.\n`
     }
     // console.log(reply);
+    let embedLength = reply.length;
+    console.log(`Manual Autonudge length is ${embedLength}`);
+    if (embedLength >= 2000) {
+      await interaction.editReply({ embeds: [createErrorEmbed(`Sorry, Discord has a 2000 character limit and cannot post this nudge.\nToo many players remaining`)] });
+      return null;
+    }
     return reply;
   }
   catch (error) {
@@ -702,7 +709,12 @@ async function getAttacksNoPings(clantag, db, nudgerDiscordId, interaction) {
     if (replaceMe) {
       reply += `⚠️ Needs to be replaced.\n`
     }
-    // console.log(reply);
+    let embedLength = reply.length;
+    console.log(`Manual Autonudge length is ${embedLength}`);
+    if (embedLength >= 2000) {
+      await interaction.editReply({ embeds: [createErrorEmbed(`Sorry, Discord has a 2000 character limit and cannot post this nudge.\nToo many players remaining`)] });
+      return null;
+    }
     return reply;
   }
   catch (error) {
@@ -728,3 +740,18 @@ function sortList(list) {
     return 0;
   });
 }
+
+// function getEmbedLength(embed) {
+//   console.log(embed);
+//   let length = 0;
+//   if (embed.data.title) length += embed.data.title.length;
+//   if (embed.data.description) length += embed.data.description.length;
+//   if (embed.data.footer?.text) length += embed.data.text.length;
+//   if (embed.data.author?.name) length += embed.data.author.name.length;
+//   if (embed.data.fields) {
+//     for (const field of embed.data.fields) {
+//       length += field.name.length + field.value.length;
+//     }
+//   }
+//   return length;
+// }

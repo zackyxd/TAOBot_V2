@@ -16,11 +16,11 @@ module.exports = {
         .setDescription("Please @ the player to add to a member channel.")
         .setRequired(true)
     )
-    .addChannelOption(option =>
-      option.setName("channel")
-        .setDescription("Please put the #member-channel you want to add this person to.")
-        .setRequired(true)
-    )
+    // .addChannelOption(option =>
+    //   option.setName("channel")
+    //     .setDescription("Please put the #member-channel you want to add this person to.")
+    //     .setRequired(true)
+    // )
     .setDefaultMemberPermissions(PermissionFlagsBits.MuteMembers),
 
   async execute(interaction) {
@@ -29,23 +29,22 @@ module.exports = {
     await interaction.deferReply({ ephemeral: true });
     let user = interaction.options.getMember("user"); // gets full user
     let userId = user.id;
-    let channel = interaction.options.getChannel("channel");
-    if (channel.type !== 0) {
-      await interaction.editReply({ embeds: [createErrorEmbed("Please make sure the channel is a text channel.")] });
-      return;
-    }
+    // let channel = interaction.options.getChannel("channel");
+    // if (channel.type !== 0) {
+    //   await interaction.editReply({ embeds: [createErrorEmbed("Please make sure the channel is a text channel.")] });
+    //   return;
+    // }
 
     const guild = interaction.guild;
     const dbPath = path.join(__dirname, `../../../guildData/${interaction.guild.id}.sqlite`);
     const db = new QuickDB({ filePath: dbPath });
 
 
-    let validChannelForMember = await db.get(`massLinkChannels.${channel.id}`);
+    let validChannelForMember = await db.get(`massLinkChannels.${interaction.channel.id}`);
     if (!validChannelForMember) {
       await interaction.editReply({ embeds: [createErrorEmbed(`You cannot add this member to this channel.\nIt is not a #members channel`)] });
       return;
     }
-
 
     let getChannels = await db.get(`massLinkChannels`);
     if (!getChannels) {
@@ -61,10 +60,10 @@ module.exports = {
       await interaction.editReply({ embeds: [createErrorEmbed(`This user has no accounts linked, cannot add.`)] });
       return;
     }
-    linkedAccounts = [...linkedAccounts, ...playertags];
-    realAccounts.push(userId);
+    // linkedAccounts = [...linkedAccounts, ...playertags];
+    // realAccounts.push(userId);
 
-    let channelIdToAdd = await db.get(`massLinkChannels.${channel.id}.channelId`);
+    let channelIdToAdd = await db.get(`massLinkChannels.${interaction.channel.id}.channelId`);
     if (!channelIdToAdd) {
       await interaction.editReply({ embeds: [createErrorEmbed(`Please @Zacky if you received this message`)] });
       return;
@@ -84,15 +83,15 @@ module.exports = {
       SendMessages: true,
     });
 
-    let roleId = await db.get(`massLinkChannels.${channel.id}.roleId`);
+    let roleId = await db.get(`massLinkChannels.${interaction.channel.id}.roleId`);
     await interaction.guild.members.fetch();
     let allUsersHaveAccess;
     let allUsersHaveRole;
     do {
       allUsersHaveAccess = true;
       allUsersHaveRole = true;
-      for (let userId of realAccounts) {
-        let member = interaction.guild.members.cache.get(userId);
+      for (let memberId of [userId]) {
+        let member = interaction.guild.members.cache.get(memberId);
         if (!channelToAddMemberTo.permissionsFor(member).has(PermissionsBitField.Flags.ViewChannel)) {
           await channelToAddMemberTo.permissionOverwrites.create(member, {
             ViewChannel: true,
@@ -121,17 +120,18 @@ module.exports = {
     let description2 = `<@${userId}>: **Please read above or wait for any information about movements.**`
 
     // Fetch the existing playersAdded array 
-    let currentPlayersAdded = await db.get(`massLinkChannels.${channel.id}.playersAdded`) || [];
+    let currentPlayersAdded = await db.get(`massLinkChannels.${interaction.channel.id}.playersAdded`) || [];
+    console.log(currentPlayersAdded);
 
     // Update the playersAdded array with the new playertags 
     let updatedPlayersAdded = [...new Set([...currentPlayersAdded, ...playertags])]; // Using Set to avoid duplicates 
 
     // Save the updated playersAdded array back to the database 
-    await db.set(`massLinkChannels.${channel.id}.playersAdded`, updatedPlayersAdded);
+    await db.set(`massLinkChannels.${interaction.channel.id}.playersAdded`, updatedPlayersAdded);
     await channelToAddMemberTo.send({ embeds: [createSuccessEmbed(description1)] });
     await channelToAddMemberTo.send(description2);
 
-    await interaction.editReply({ embeds: [createSuccessEmbed(`Successfully added <@${userId}> to the channel <#${channel.id}>`)] })
+    await interaction.editReply({ embeds: [createSuccessEmbed(`Successfully added <@${userId}> to the channel <#${interaction.channel.id}>`)] })
 
 
   }

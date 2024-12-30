@@ -16,7 +16,6 @@ const checkClanChanges = async (client) => {
     const clans = await db.get(`clans`);
     if (!clans) return;
     for (const clantag in clans) {
-      console.log(clantag);
       let currentData = await API.getClan(clantag);
       let channelId = await db.get(`clans.${clantag}.clanlogsChannel`);
       const channel = guild.channels.cache.get(channelId);
@@ -52,7 +51,7 @@ async function checkForChanges(guild, clantag, currentData) {
     // no previous data, make it the new data
     await db.set(`clanData.${clantag}`, currentData);
     console.log("started previous data");
-    console.log(clantag);
+    // console.log(clantag);
     let clanName = await API.getClan(clantag);
     return { veryNewData: createSuccessEmbed(`Successfully started clan logs for \`${clanName.name}\``), changes: [] };
   }

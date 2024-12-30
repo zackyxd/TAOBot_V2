@@ -24,7 +24,7 @@ module.exports = {
   async execute(interaction) {
     if (!interaction.isChatInputCommand()) return;
     if (interaction.commandName !== "check") return;
-    await interaction.deferReply();
+    await interaction.deferReply({ ephemeral: true });
     let abbrev = interaction.options.getString("clan-abbreviation").toLowerCase();
     let pingMissing = interaction.options?.getBoolean('ping-missing') ?? false;
     const dbPath = path.join(__dirname, `../../../guildData/${interaction.guild.id}.sqlite`);
@@ -78,9 +78,9 @@ module.exports = {
     for (let player in sortedIfPlayerInClan) {
       let playerData = sortedIfPlayerInClan[player];
 
-      if (playerData.inClan === true && playerData.level >= 50) {
+      if (playerData.inClan === true && playerData.level >= 25) {
         description += `[${playerData.name}](<https://royaleapi.com/player/${(playerData.playertag).substring(1)}>) ✅\n`;
-      } else if (playerData.inClan === false && playerData.level >= 50) {
+      } else if (playerData.inClan === false && playerData.level >= 25) {
         description += `[${playerData.name}](<https://royaleapi.com/player/${(playerData.playertag).substring(1)}>) ❌\n`;
       }
 
@@ -88,20 +88,21 @@ module.exports = {
       let discordId = await db.get(`playertags.${playerData.playertag}.discordId`);
 
       // Add or remove discordId from sets based on player's inClan status
-      if (playerData.inClan === true && playerData.level >= 50) {
+      if (playerData.inClan === true && playerData.level >= 25) {
         usersNotPing.add(discordId);
         if (usersToPing.has(discordId)) {
           usersToPing.delete(discordId);
         }
-      } else if (playerData.inClan === false && playerData.level >= 50) {
+      } else if (playerData.inClan === false && playerData.level >= 25) {
         if (!usersNotPing.has(discordId)) {
+          console.log("Adding discordId to usersToPing: ", discordId);
           usersToPing.add(discordId);
         }
       }
     }
 
     let playerPings1 = `**You have not joined \`${clanData.name}\` yet, please join:** `;
-    let playerPings2 = "";
+    let playerPings2 = ""; // list of players
     if (pingMissing === true && usersToPing.size > 0) {
       usersToPing.forEach(discordId => {
         if (discordId) {
@@ -109,6 +110,7 @@ module.exports = {
         }
       })
       let pingMessage = "";
+      console.log("This is the players to ping: ", playerPings2);
       if (playerPings2 !== "") {
         pingMessage = playerPings1 + playerPings2;
       }
@@ -116,29 +118,35 @@ module.exports = {
         pingMessage = "**Every in this channel has an account in the clan.**"
       }
 
-      await interaction.editReply({ embeds: [createSuccessEmbed(`Sent the ping & link.`)] });
+
+      await interaction.editReply({ embeds: [createSuccessEmbed(`Sent ping & link.`)] });
 
       let clanInfo = await db.get(`clans.${clanData.tag}`)
-      if (clanInfo && clanInfo) {
-        if (clanInfo && !clanInfo.clanLink) {
-          await interaction.channel.send({ embeds: [createExistEmbed(`\`${clanInfo.clanName}\` does not have a clan invite available.`)] });
-        }
-        if (clanInfo && clanInfo.clanLink && clanInfo.alreadyExpired === 1) {
-          await interaction.channel.send({ embeds: [createErrorEmbed(`The link for \`${clanInfo.clanName}\` is currently expired. Please generate a new invite.`)] });
-        }
-        if (clanInfo && clanInfo.clanLink && clanInfo.alreadyExpired === 0) {
-          let embed = new EmbedBuilder()
-            .setColor('#00FF00') // Green color for success
-            .setDescription(`## [Click here to join ${clanInfo.clanName}](<${clanInfo.clanLink}>)\n-# Expires: <t:${clanInfo.expiryTime}:R>`) // Make the message bold
-          // .setFooter({ text: convertUnixToTime(clanInfo.expiryTime) })
-          await interaction.channel.send(pingMessage);
-          await interaction.channel.send({ embeds: [embed] });
-          await interaction.channel.send(`-# [Click this to join ${clanInfo.clanName}](<${clanInfo.clanLink}>) Expires: <t:${clanInfo.expiryTime}:R>`);
-        }
+
+      if (clanInfo && !clanInfo.clanLink) {
+        await interaction.channel.send({ embeds: [createExistEmbed(`\`${clanInfo.clanName}\` does not have a clan invite available.`)] });
       }
+      if (clanInfo && clanInfo.clanLink && clanInfo.alreadyExpired === 1) {
+        await interaction.channel.send({ embeds: [createErrorEmbed(`The link for \`${clanInfo.clanName}\` is currently expired. Please generate a new invite.`)] });
+      }
+      if (clanInfo && clanInfo.clanLink && clanInfo.alreadyExpired === 0) {
+        let embed = new EmbedBuilder()
+          .setColor('#00FF00') // Green color for success
+          .setDescription(`## [Click here to join ${clanInfo.clanName}](<${clanInfo.clanLink}>)\n-# Expires: <t:${clanInfo.expiryTime}:R>`) // Make the message bold
+        // .setFooter({ text: convertUnixToTime(clanInfo.expiryTime) })
+        await interaction.channel.send(pingMessage);
+        await interaction.channel.send({ embeds: [embed] });
+        await interaction.channel.send(`-# [Click this to join ${clanInfo.clanName}](<${clanInfo.clanLink}>) Expires: <t:${clanInfo.expiryTime}:R>`);
+      }
+
       return;
     }
 
+    if (description.length < 1 || description.length > 2000) {
+      await interaction.editReply({ embeds: [createErrorEmbed(`There are no playertags in this ticket. This may be an error, contact Zacky.`)] });
+      return;
+    }
+    await interaction.editReply({ embeds: [createSuccessEmbed(`Sent list of players.`)] });
     let embed = new EmbedBuilder()
       .setTitle(`${clanData.name} Member Check`)
       .setThumbnail(process.env.BOT_IMAGE)
@@ -146,7 +154,7 @@ module.exports = {
       // .setURL(`https://royaleapi.com/clan/${clanData.tag.substring(1)}`)
       .setDescription(description);
 
-    await interaction.editReply({ embeds: [embed] })
+    await interaction.channel.send({ embeds: [embed] })
 
   }
 }

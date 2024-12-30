@@ -1,9 +1,9 @@
-const API = require("../../API.js");
 const { SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, Embed, PermissionsBitField } = require("discord.js");
 const path = require('path');
 const Database = require('better-sqlite3');
 const { QuickDB } = require("quick.db");
 const fs = require('fs');
+const API = require("../../API.js");
 const { createSuccessEmbed, createExistEmbed, createErrorEmbed, createMaintenanceEmbed } = require('../../utilities/embedUtility.js');
 const cron = require('node-cron');
 
@@ -61,9 +61,12 @@ module.exports = {
     // let REMOVETHESEROLES = ['1294378323472027761', '1183818611899506838', '1184508781728641024']; // clamfam, ac, a1. MY SERVER
     // let KEEPTHESEROLES = ['1201503459476770836'] // attacking late
 
-    1057168619936682055
+    // 1057168619936682055
 
-    let REMOVETHESEROLES = [`783177344293797908`, `1142977903353659402`, `1115372668464676985`, `1227750844179415060`, `1138989851631423538`, '1138989813224185866', '1138989747423940668', '1138989457018732635', '1138989373145235539', '918200826714026054', '1026642626943926312', '952807483561365565', '891452315100409898', '991283111889469500', '945216955319713813', '891457598774185994', '968260581415071764']// AFAM SERVER
+    let AFAMROLES = [`783177344293797908`, `1142977903353659402`, `1115372668464676985`, `1227750844179415060`, `1138989851631423538`, '1138989813224185866', '1138989747423940668', '1138989457018732635', '1138989373145235539', '918200826714026054', '1026642626943926312', '952807483561365565', '891452315100409898', '991283111889469500', '945216955319713813', '891457598774185994', '968260581415071764']// AFAM SERVER
+    let AMROLES = ['1315729869619068961', '1315729905291366533', '1315729944202055811', '1315729971251249206', '1315730003836801074', '1315730046761304177']
+    // AM ROLES: AM, AS, AL, AG, AP, AT, AB
+    let REMOVETHESEROLES = AFAMROLES.concat(AMROLES);
 
     // Clamfam, practice, tiger, afh l2w, ac-l2w, ap-l2w, a3-l2w, coc-l2w, a1-l2w, clash of clamz, afh, a3, ac, ap, coc, a1, 
 
@@ -150,7 +153,7 @@ async function writeMembers(interaction, sortedMembers, REMOVETHESEROLES, KEEPTH
     let removeRoleCount = 0;
     for (const roleId of REMOVETHESEROLES) {
       if (member.roles.cache.has(roleId)) {
-        // await member.roles.remove(roleId);
+        // await member.roles.remove(roleId); // Comment this line to remove roles
         removeRoleCount++;
         delay(150)
       }

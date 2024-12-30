@@ -22,7 +22,7 @@ module.exports = {
     .addStringOption((option) =>
       option
         .setName("user-id")
-        .setDescription("UserID to check, just @ anyone for the first option to use this")
+        .setDescription("Check profile of someone's discord id, just @ anyone for the first option to use this")
         .setRequired(false)
     ),
   // .setDefaultMemberPermissions(PermissionFlagsBits.MuteMembers),
@@ -34,7 +34,10 @@ module.exports = {
 
     let user = interaction.options.getMember("user"); // gets full user
     let onlyDiscordId = interaction.options.get("user-id")?.value;
-    console.log(onlyDiscordId);
+    if (!user) {
+      await interaction.editReply({ embeds: [createErrorEmbed(`Cannot grab this @user.\nLikely they have left the server but is still cached on your Discord.`)] });
+      return;
+    }
     let discordId = onlyDiscordId || user.user.id;
 
     const dbPath = path.join(__dirname, `../../../guildData/${interaction.guild.id}.sqlite`);

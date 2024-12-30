@@ -1,19 +1,16 @@
 const API = require("../../API.js");
 const { Events, ActivityType, EmbedBuilder, Embed } = require("discord.js");
 const path = require('path');
-const Database = require('better-sqlite3');
 const { QuickDB } = require("quick.db")
 const fs = require('fs');
 const { createSuccessEmbed, createExistEmbed, createErrorEmbed, createMaintenanceEmbed } = require('../../utilities/embedUtility.js');
 const cron = require('node-cron');
-const { log } = require("console");
-const { all } = require("axios");
 require('dotenv/config');
 
 
 const checkRace = async (client) => {
-  // cron.schedule('15-59 2 * * *', async function () {
-  cron.schedule('*/5 * * * * *', async function () {
+  cron.schedule('15-59 2 * * *', async function () {
+    // cron.schedule('*/5 * * * * *', async function () {
     // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
     // Your code here
     postRace(client);
@@ -60,7 +57,7 @@ async function postRace(client) {
           continue;
         }
         // console.log("Old vs new periodindex:", oldRaceInfo.periodIndex, newPeriodIndex);
-        let raceType = checkWhichTypeRace(oldRaceInfo); // Get race type. 0, 1, 2
+        let raceType = checkWhichTypeRace(oldRaceInfo.periodType); // Get race type. 0, 1, 2
         if (!isNewDay(oldRaceInfo.attacks, newAttacks, oldRaceInfo.periodIndex, raceData.periodIndex, oldRaceInfo.clanName)) {
           console.log("Not new day, update database with new data");
           await addToDatabase(clantag, raceData, guild.id)
@@ -78,7 +75,7 @@ async function postRace(client) {
           // Colosseum Day
           console.log("Colosseum Day");
           let allClans = getAllClans(oldRaceInfo);
-          embed = await outputColoInfo(allClans, clantag, oldRaceInfo.periodIndex);
+          embed = await outputColoInfo(allClans, clantag, oldRaceInfo.periodIndex, oldRaceInfo.clanName);
           embed2 = await remainingAttacks(oldRaceInfo);
         }
         else {
@@ -103,7 +100,7 @@ async function postRace(client) {
 
 function isNewDay(oldAttacks, newAttacks, oldPeriodIndex, newPeriodIndex) {
   // If new - old is negative, means it's a new day.
-  return true;
+  // return true;
   if (newAttacks - oldAttacks < 0) {
     console.log("New day by attacks");
     return true;
@@ -122,7 +119,7 @@ function getAllClans(data) {
   let allClans = [];
   for (let i = 0; i < data.clans.length; i++) {
     let clanInfo = getImportantRaceInfo(data, i);
-    console.log(clanInfo);
+    // console.log(clanInfo);
     allClans.push(clanInfo);
   }
   return allClans;
@@ -152,7 +149,7 @@ function checkWhichTypeRace(data) {
     "colosseum": 2
   }
   // Log the exact check being made 
-  let raceType = raceTypeMap[data.periodType];
+  let raceType = raceTypeMap[data];
   return raceType !== undefined ? raceType : 1;
 }
 
@@ -204,7 +201,11 @@ function getImportantRaceInfo(data, i) {
     }
   }
 
-  let type = checkWhichTypeRace(data);
+  if (decksUsed === 0) {
+    decksUsed = clan.decksUsed;
+  }
+
+  let type = checkWhichTypeRace(data.periodType);
   if (type === 1) {
     warDayRace();
   }
@@ -227,13 +228,19 @@ function getImportantRaceInfo(data, i) {
 
   // Colo race inside of getImportantRaceInfo
   function coloRace() {
+    // console.log("Checking Colo race info");
     day = (data.periodIndex % 7) - 2;
+    // console.log("Day #: ", day);
+    // console.log("Decks used: ", decksUsed);
     for (let i = 1; i < day; i++) {
       decksUsed += 200;
     }
+    // console.log("Decks used after adding days: ", decksUsed);
+
     average = round(clan.fameEarned / decksUsed, 2); // Get total average for all days
     fameEarned = clan.fameEarned;
     decksUsed = decksUsed % 200;
+    // console.log("Decks used after % 200: ", decksUsed);
     projectedPoints = fameEarned + Math.round((average * (200 - decksUsed)) / 50) * 50;
   }
 
@@ -479,6 +486,7 @@ async function main() {
 // main();
 
 async function remainingAttacks(data) {
+  // console.log(data);
   let clan;
   for (clan of data.clans) {
     if (clan.clantag !== data.clantag) {
@@ -517,7 +525,7 @@ async function remainingAttacks(data) {
 
     let description = "";
     // If not past the finish line
-    if (clan.boatPoints < 10000) {
+    if (clan.boatPoints < 10000 || data.periodType === "colosseum") {
       for (let i = 0; i <= 3; i++) {
         if (attacksUsed[i].length > 0) {
           if (i !== 0) {
@@ -563,11 +571,18 @@ async function remainingAttacks(data) {
 
     // description += `\n<:peopleLeft:1188128630270861492> ${data.playersRemaining}\n<:decksLeft:1187752640508088370> ${200 - data.attacks}`
     // console.log(description);
+    let author = '';
+    if (data.periodType === 'colosseum') {
+      author = `${getDayType(checkWhichTypeRace(data.periodType))} | Day ${data.periodIndex % 7 - 2}`
+    }
+    else {
+      author = `${getDayType(checkWhichTypeRace(data.periodType))} ${data.sectionIndex + 1} | Day ${data.periodIndex % 7 - 2}`
+    }
 
     let embed = new EmbedBuilder()
       .setTitle("__" + clanData.name + "__")
       .setURL(`https://royaleapi.com/clan/${(clanData.tag).substring(1)}/war/race`)
-      .setAuthor({ name: `${getDayType(checkWhichTypeRace(data.periodType))} ${data.sectionIndex + 1} | Day ${data.periodIndex % 7 - 2}` })
+      .setAuthor({ name: author })
       .setDescription(description)
       .setColor('Purple')
       .setThumbnail(process.env.BOT_IMAGE)

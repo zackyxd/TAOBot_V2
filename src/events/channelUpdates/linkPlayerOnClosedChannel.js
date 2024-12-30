@@ -10,8 +10,7 @@ module.exports = {
   name: Events.ChannelUpdate,
   async execute(oldChannel, newChannel) {
     // change below to and 
-    // console.log(oldChannel, newChannel)
-    if (oldChannel.parentId !== newChannel.parentId && newChannel.name.includes('ticket')) {
+    if (oldChannel.parentId !== newChannel.parentId && (newChannel.name.includes('ticket') || newChannel.name.includes('closed'))) {
       // if (oldChannel.name !== newChannel.name && newChannel.name.includes('closed')) {
       console.log(`Channel parent updated and includes "ticket": ${newChannel.name}`);
       // You can add additional actions here, such as sending a message to a specific channel

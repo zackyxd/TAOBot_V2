@@ -131,7 +131,7 @@ async function grabClanDatabaseInfo(clantag, db, interaction) {
   let clanlogsChannelId = await db.get(`clans.${clantag}.clanlogsChannel`);
   let roleId = await db.get(`clans.${clantag}.roleId`);
   let badgeIdFind = await db.get(`clanData.${clantag}`);
-  let badgeId = badgeIdFind.badgeId;
+  let badgeId = badgeIdFind?.badgeId || '0';
 
 
   let reply = '';

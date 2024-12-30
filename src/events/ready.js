@@ -13,7 +13,9 @@ const { updateClanInvites } = require('./automationEvents/createInviteLinkAutoma
 const { postNudges } = require('./automationEvents/nudgesAutomation');
 const { findPlayerAttacks } = require('./dataUpdates/findPlayerAttacksInClans.js');
 const { checkRace } = require('./automationEvents/endOfWarDayStats.js');
+const { updateMemberClanRoles } = require('../utilities/checkIfHaveRole.js');
 
+// const { post20WinsEmbeds } = require('./20winchallenge/UpdateMatches');
 
 module.exports = {
   name: Events.ClientReady,
@@ -47,7 +49,8 @@ module.exports = {
       timezone: 'America/Phoenix'
     });
 
-    // checkAttacks(client);
+    // post20WinsEmbeds(client);
+
     checkRace(client);
     postNudges(client);
     setInterval(async () => {
@@ -59,6 +62,14 @@ module.exports = {
     }, 180000);
 
     findPlayerAttacks(client);
+
+    await updateMemberClanRoles(client);
+    setInterval(async () => {
+      console.log("Updating roles");
+      await updateMemberClanRoles(client);
+    }, 480000)
+
+
   }
 }
 

@@ -37,7 +37,13 @@ async function processMessage(message) {
       const member = message.guild.members.cache.get(discordId);
       try { // <-- Added try block
         if (!member.permissions.has([PermissionsBitField.Flags.MuteMembers])) {
-          await message.react('👍');
+          const getEmoji = client.emojis.cache.get("1315135180008198206"); // salute
+          if (getEmoji) {
+            await message.react(getEmoji);
+          }
+          else {
+            await message.react('👍');
+          }
         }
       } catch (error) { // <-- Added catch block
         console.log(error);

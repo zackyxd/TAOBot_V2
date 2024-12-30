@@ -1,9 +1,9 @@
-const API = require("../../API.js");
 const { SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, Embed } = require("discord.js");
 const path = require('path');
 const Database = require('better-sqlite3');
 const { QuickDB } = require("quick.db")
 const fs = require('fs');
+const API = require("../../API.js");
 const { createSuccessEmbed, createExistEmbed, createErrorEmbed, createMaintenanceEmbed } = require('../../utilities/embedUtility.js');
 
 
@@ -45,13 +45,15 @@ module.exports = {
     try {
       // Get player data (discordId);
       let playerData = await db.get(`playertags.${playertag}`);
-      if (!playerData.discordId) {
+      if (playerData && !playerData.discordId) {
         await interaction.editReply({ embeds: [createErrorEmbed(`Playertag ${playertag} is not linked to any user.`)] });
         return;
       }
       let discordId = playerData.discordId;
       // Remove the discordId from the player data
+      console.log(playerData);
       delete playerData.discordId;
+      console.log(playerData);
       // Update the player data in the database
       await db.set(`playertags.${playertag}`, playerData);
 

@@ -150,7 +150,7 @@ module.exports = {
           if (participatedWeeks < 3) continue;
           // Check if the player has 28 or more attacks
           const totalAttacks = player.last3Wars.reduce((sum, war) => sum + war.attacks, 0);
-          if (totalAttacks < 28) continue;
+          if (totalAttacks < 32) continue;
           // console.log(player.playerName, totalAttacks);
 
           try {

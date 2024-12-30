@@ -55,7 +55,6 @@ async function findAttacks(client) {
     const clans = await db.get(`clans`);
     if (!clans) continue;
 
-    // await cleanUpDatabase(db);
 
     const playerAttacksMap = new Map();
     for (const clantag in clans) {
@@ -74,6 +73,7 @@ async function findAttacks(client) {
     }
     await savePlayerAttacks(db, playerAttacksMap);
     console.log(`Finished setting everyone for all clans in guild ${guild.id}`);
+    // await cleanUpDatabase(db);
   }
 }
 
@@ -147,17 +147,17 @@ async function savePlayerAttacks(db, playerAttacksMap) {
   }
 }
 
-// async function cleanUpDatabase(db) {
-//   const playertags = await db.get(`playertags`);
+async function cleanUpDatabase(db) {
+  const playertags = await db.get(`playertags`);
 
-//   for (const playertag in playertags) {
-//     if (!playertags[playertag].discordId) {
-//       // console.log(playertags[playertag]);
-//       await db.delete(`playertags.${playertag}`);
-//     }
-//   }
-//   console.log("All specified entries should be deleted");
-// }
+  for (const playertag in playertags) {
+    if (!playertags[playertag].discordId) {
+      // console.log(playertags[playertag]);
+      await db.delete(`playertags.${playertag}`);
+    }
+  }
+  console.log("All specified entries should be deleted");
+}
 
 
 

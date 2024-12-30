@@ -48,7 +48,7 @@ const moment = require('moment-timezone');
 
 const postNudges = async (client) => {
   // weekend at 7pm -> 1am
-  cron.schedule('0 12,19,21,23,1 * * 5,6,7', () => {
+  cron.schedule('0 19,21,23,1 * * 5,6,7', () => {
     // cron.schedule('0 19,21,23,1 * * 5,6,7', () => {
     postAutoNudge(client);
   }, {
@@ -57,7 +57,7 @@ const postNudges = async (client) => {
   });
 
   // Thursday at 5-11pm
-  cron.schedule('0 12,19,21,23 * * 4', () => {
+  cron.schedule('0 19,21,23 * * 4', () => {
     postAutoNudge(client);
   }, {
     scheduled: true,
@@ -86,7 +86,7 @@ async function postAutoNudge(client) {
     }
 
     for (const clantag in clans) {
-      console.log(clantag);
+      // console.log(clantag);
       let checkClan = await API.getCurrentRiverRace(clantag);
       if (checkClan.data) {
         console.log("Error doing autonudge on", clantag);
@@ -168,7 +168,7 @@ async function grabAutoNudge(clantag, db, botId, channelId, client, guildId) {
     let warWeek = attackData.sectionIndex + 1; // week
     let periodIndex = attackData.periodIndex; // day 
 
-
+    console.log();
     if (whichDayType === 'warDay') {
       whichDayType = `War Week ${warWeek}`;
       oldWarDay = (periodIndex % 7) - 2;
@@ -308,7 +308,7 @@ async function grabAutoNudge(clantag, db, botId, channelId, client, guildId) {
     let replaceMe = false;
 
     let startTime = moment().tz("America/Phoenix").hour(21).minute(1).second(0); // Set start time to 9:01 PM
-    let endTime = startTime.clone().add(6, 'hours'); // Add 6 hours to include the next day's early hours
+    let endTime = moment().tz("America/Phoenix").hour(3).minute(0).second(0).add(1, 'day'); // Set end time to 3:00 AM next day
     let currentTime = moment().tz("America/Phoenix");
 
     for (let attacks = 0; attacks <= 4; attacks++) {
@@ -346,7 +346,7 @@ async function grabAutoNudge(clantag, db, botId, channelId, client, guildId) {
             const channel = await client.channels.fetch(channelId);
             const member = await guild.members.fetch(playerData.discordId);
 
-            if (currentTime.isAfter(startTime) && currentTime.isBefore(endTime)) { // time between it should nudge people
+            if (currentTime.isBetween(startTime, endTime)) { // time between it should nudge people
               if (channel && member && channel.permissionsFor(member).has(PermissionsBitField.Flags.ViewChannel)) {
                 players.push(`* <@${playerData.discordId}> (${player.playerName})`); // ping players who haven't pinged
               } else {
@@ -425,7 +425,7 @@ async function grabAutoNudge(clantag, db, botId, channelId, client, guildId) {
       for (const tag in cantUseAttacks) {
         if (cantUseAttacks.hasOwnProperty(tag)) {
           const member = cantUseAttacks[tag];
-          reply += `* ${member.playerName} (-${member.attacksNotUsed}) 💀\n`;
+          reply += `* ${member.playerName} (-${member.attacksNotUsed}) 🤝\n`;
         }
       }
       reply += "\n";
@@ -443,7 +443,7 @@ async function grabAutoNudge(clantag, db, botId, channelId, client, guildId) {
       reply += `🤬 Used attacks elsewhere.\n`;
     }
     if (cantUseAttacksBool) {
-      reply += `💀 In clan, can't use # attacks.\n`
+      reply += `🤝 In clan, can't use # attacks.\n`
     }
     if (replaceMe) {
       reply += `⚠️ Needs to be replaced.\n`

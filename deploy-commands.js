@@ -7,7 +7,7 @@ const path = require('node:path');
 const commands = [];
 // Grab all the command folders from the commands directory you created earlier
 const foldersPath = path.join(__dirname, 'src/commands');
-console.log(foldersPath);
+// console.log(foldersPath);
 const commandFolders = fs.readdirSync(foldersPath);
 
 for (const folder of commandFolders) {
@@ -19,6 +19,7 @@ for (const folder of commandFolders) {
     const filePath = path.join(commandsPath, file);
     const command = require(filePath);
     if ('data' in command && 'execute' in command) {
+      console.log(command.data.name)
       commands.push(command.data.toJSON());
     } else {
       console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);

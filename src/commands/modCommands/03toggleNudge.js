@@ -72,7 +72,9 @@ module.exports = {
       replyMessage += `No nudge channel is set. Please provide a channel to post auto nudges.`;
     }
     else {
-      replyMessage += `Posting to <#${clan.nudgeSettings.nudgeChannel}>`
+      if (status === "on") {
+        replyMessage += `Posting to <#${clan.nudgeSettings.nudgeChannel}>`
+      }
     }
     await interaction.editReply({ embeds: [createSuccessEmbed(replyMessage)] })
 

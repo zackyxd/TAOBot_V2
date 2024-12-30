@@ -54,7 +54,7 @@ module.exports = {
     }
 
     let findLinkedAccounts = await db.get(`users.${userId}`);
-    let playertags = findLinkedAccounts?.playertags;
+    let playertags = findLinkedAccounts?.playertags || [];
 
     let channelIdToRemove = await db.get(`massLinkChannels.${interaction.channel.id}.channelId`);
     if (!channelIdToRemove) {
