@@ -14,6 +14,7 @@ const updateMemberClanRoles = async (client) => {
     allGuildPromises.push(processGuild(guild));
   }
   await Promise.all(allGuildPromises);
+  console.log("Finished going through all members to update their clan roles");
 }
 
 const processGuild = async (guild) => {
@@ -23,13 +24,13 @@ const processGuild = async (guild) => {
     const clans = await db.get(`clans`);
     if (!clans) return;
 
-    let grabGlobalRole = await db.get(`guilds.${guild.id}`);
-    let grabRole = grabGlobalRole?.globalRole;
-    console.log(`Processing guild: ${guild.id}`);
+    let grabGlobalRole = await db.get(`guilds.${guild.id}`); // global role they must have
+    let grabRole = grabGlobalRole?.globalRole; // global role id
+    // console.log(`Processing guild: ${guild.id}`);
 
     const clanPromises = [];
     for (const clantag in clans) {
-      clanPromises.push(processClan(clantag, db, grabRole, guild));
+      clanPromises.push(processClan(clantag, db, grabRole, guild)); // must have global role (grabRole)
     }
 
     await Promise.all(clanPromises);
@@ -40,18 +41,18 @@ const processGuild = async (guild) => {
 
 const processClan = async (clantag, db, grabRole, guild) => {
   try {
-    console.log(`Second loop, starting clantag: ${clantag}`);
+    // console.log(`Second loop, starting clantag: ${clantag}`);
     let roleId = await db.get(`clans.${clantag}.roleId`);
     if (!roleId) {
-      console.log(`No roleId found for clantag: ${clantag}, skipping...`);
+      // console.log(`No roleId found for clantag: ${clantag}, skipping...`);
       return;
     }
-    console.log("Updating clan member roles for:", clantag);
+    // console.log("Updating clan member roles for:", clantag);
 
     const membersInClan = await getClanMembers(clantag); // grab members in clan
     const discordIds = await findDiscordIds(membersInClan, guild.id); // grab discord ids of members if available
     await addMissingClanRole(discordIds, roleId, grabRole, guild);
-    console.log(`Finished processing check-roles for clantag: ${clantag}`);
+    // console.log(`Finished processing check-roles for clantag: ${clantag}`);
   } catch (error) {
     console.error("Error processing clan:", clantag, error);
   }
@@ -85,6 +86,7 @@ async function addMissingClanRole(discordIds, roleId, mustHaveRole, guild) {
   let rolePromises = [];
   for (const discordId of discordIds) {
     rolePromises.push(addRoleToMember(discordId, roleId, mustHaveRole, guild));
+    sleep(75);
   }
   await Promise.all(rolePromises);
 }
@@ -92,7 +94,7 @@ async function addMissingClanRole(discordIds, roleId, mustHaveRole, guild) {
 const addRoleToMember = async (discordId, roleId, mustHaveRole, guild) => {
   try {
     let member = await guild.members.fetch(discordId);
-    if (mustHaveRole && member.roles.cache.has(mustHaveRole)) {
+    if (mustHaveRole && member.roles.cache.has(mustHaveRole)) { // must have global role (must have role)
       await member.roles.add(roleId);
       await sleep(100);
     }

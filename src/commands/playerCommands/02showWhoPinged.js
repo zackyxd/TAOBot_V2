@@ -69,7 +69,7 @@ module.exports = {
     // console.log(attackingLatePlayers);
     // Fetch and sort clans by name
     const clans = await db.get(`clans`) || {};
-    const sortedClans = Object.values(clans).sort((a, b) => a.clanName.localeCompare(b.clanName));
+    const sortedClans = Object.values(clans).sort((a, b) => b.clanName.localeCompare(a.clanName));
 
     let clanMap = new Map();
 

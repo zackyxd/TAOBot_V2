@@ -364,14 +364,14 @@ async function outputColoInfo(clans, ogClantag, periodIndex, mainClanName) {
     if (ogClantag === clans[i].clantag) {
       description += `__**${i + 1}. ${escapedName} <:${clans[i].badgeId}:${await findEmojiId(badgeId)}>**__`;
       description += `<:fame:1191543365867684003> ${clans[i].fameEarned.toLocaleString()}\n`;
-      description += `<:ProjectedPoints:1187754001312272526> ${clans[i].projectedPoints.toLocaleString()}\n`;
+      // description += `<:ProjectedPoints:1187754001312272526> ${clans[i].projectedPoints.toLocaleString()}\n`;
       description += `<:decksLeft:1187752640508088370> ${clans[i].decksLeft}\n`;
       description += `**<:average:1187754016780849253> ${clans[i].average}**\n\n`;
     }
     else {
       description += `**${i + 1}. ${escapedName} <:${clans[i].badgeId}:${await findEmojiId(badgeId)}>**`;
       description += `<:fame:1191543365867684003> ${clans[i].fameEarned.toLocaleString()}\n`;
-      description += `<:ProjectedPoints:1187754001312272526> ${clans[i].projectedPoints.toLocaleString()}\n`;
+      // description += `<:ProjectedPoints:1187754001312272526> ${clans[i].projectedPoints.toLocaleString()}\n`;
       description += `<:decksLeft:1187752640508088370> ${clans[i].decksLeft}\n`;
       description += `**<:average:1187754016780849253> ${clans[i].average}**\n\n`;
     }

@@ -3,7 +3,7 @@ require('dotenv/config');
 const path = require('node:path');
 const fs = require('node:fs');
 
-const { Client, Collection, Events, GatewayIntentBits, ActivityType } = require('discord.js');
+const { Client, Collection, Events, GatewayIntentBits, ActivityType, GuildMemberManager, RoleManager, Options } = require('discord.js');
 
 global.client = new Client({
   intents: [
@@ -13,9 +13,10 @@ global.client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessageReactions,
-  ],
+  ]
 });
 
+client.setMaxListeners(20);
 client.commands = new Collection();
 client.cooldowns = new Collection();
 const foldersPath = path.join(__dirname, 'commands');

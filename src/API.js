@@ -39,6 +39,7 @@ async function fetchData(url, filename, print) {
   } catch (error) {
     console.log(`Fetch failed with ${url}: ${error.message}`);
     if (error.response) {
+      console.log(`Error response data: ${JSON.stringify(error.response.data, null, 2)}`);
       const statusCode = error.response.status;
       if (statusCode === 404) {
         return 404;

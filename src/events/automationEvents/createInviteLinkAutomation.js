@@ -87,7 +87,8 @@ const updateClanInvites = async (client) => {
     else {
       expiredClans.forEach(clan => {
         if (clan.roleId && clan.roleId !== "") {
-          expiredMessageContent += `<@&${clan.roleId}>, your link has expired.\n`;
+          expiredMessageContent += `${clan.clanName}, your link has expired.\n`; // FIX
+          // expiredMessageContent += `<@&${clan.roleId}>, your link has expired.\n`;
         }
         else {
           expiredMessageContent += `${clan.clanName}, your link has expired.\n`;

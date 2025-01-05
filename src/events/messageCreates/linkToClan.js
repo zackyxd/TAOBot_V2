@@ -109,7 +109,7 @@ async function processQueue() {
     }
 
     // if (message.content.trim() === `!${clanAbbrev}link`) {
-    if (message.content.trim() === `!${clanAbbrev}link` || message.content.trim() === `!${clanAbbrev}`) {
+    if (message.content.trim() === `!${clanAbbrev}link` || message.content.trim().toLowerCase() === `!${clanAbbrev}`) {
       try {
         await message.delete();
       } catch (error) {

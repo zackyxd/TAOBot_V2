@@ -50,7 +50,7 @@ module.exports = {
       interaction.editReply({ embeds: [createSuccessEmbed(`<@${findAccountLinked}> (@${name}) has this playertag.`)] })
     } catch (error) {
       console.error(`Error fetching user info: ${error}`);
-      interaction.editReply({ embeds: [createErrorEmbed(`There was an error fetching the user info.`)] });
+      interaction.editReply({ embeds: [createErrorEmbed(`There was an error fetching the user info. However, their discord id was: ${findAccountLinked}`)] });
     }
 
 

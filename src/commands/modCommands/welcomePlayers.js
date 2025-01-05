@@ -24,7 +24,7 @@ module.exports = {
   async execute(interaction) {
     if (!interaction.isChatInputCommand()) return;
     if (interaction.commandName !== "welcome") return;
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply();
     let userId = interaction.options.getUser("user").id; // gets full user
     let abbrev = interaction.options.get("abbreviation").value.toLowerCase();
     const dbPath = API.findFileUpwards(__dirname, `guildData/${interaction.guild.id}.sqlite`);
@@ -67,7 +67,7 @@ module.exports = {
     let roleIds = [];
     roleIds.push(globalRole);
     roleIds.push(clanRole);
-    await interaction.editReply("Waiting until player is confirmed to have the roles, may take a sec...")
+    await interaction.editReply("Trying to find the user...may take a bit")
 
     await interaction.guild.members.fetch();
     try {
@@ -75,11 +75,6 @@ module.exports = {
     } catch (error) {
       await interaction.editReply("Could not fetch user for some reason...contact Zacky")
       console.log(`Could not fetch user for /welcome: ${error}`);
-      return;
-    }
-
-    if (!user) {
-      await interaction.editReply("Could not fetch user after 5 tries :( Send Zacky this");
       return;
     }
     await user.fetch(true);
@@ -91,7 +86,7 @@ module.exports = {
     function sleep(ms) {
       return new Promise(resolve => setTimeout(resolve, ms));
     }
-
+    await interaction.editReply("Working on giving the roles...")
     while (!confirmRoles) {
       console.log("CHECKING ROLES FOR WELCOME")
       confirmRoles = true;
@@ -104,10 +99,10 @@ module.exports = {
         }
       }
       checkCount++;
-      await interaction.editReply(`Waiting for roles...${checkCount}`)
+      await interaction.editReply(`Role Checked...#${checkCount}`)
     }
 
-    await interaction.editReply(`Roles given!`);
+    await interaction.editReply(`Roles given and message sending!`);
     await interaction.channel.send({ embeds: [createSuccessEmbed(`The user <@${user.id}> should now have <@&${globalRole}> and <@&${clanRole}> roles.\nSending the welcome message to: ${channelToSend}`)] })
 
     await sleep(1500);

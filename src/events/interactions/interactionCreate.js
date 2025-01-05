@@ -42,7 +42,7 @@ module.exports = {
             content: 'There was an error while executing this command!',
             ephemeral: true
           })
-        } else {
+        } else if (error.code !== 10062) {
           await interaction.reply({
             content: 'There was an error while executing this command!',
             ephemeral: true

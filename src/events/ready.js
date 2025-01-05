@@ -3,14 +3,14 @@ const path = require('path');
 const cron = require('node-cron');
 const moment = require('moment-timezone');
 const API = require("../API.js");
-const Database = require('better-sqlite3');
 const { QuickDB } = require("quick.db")
 const fs = require('fs');
 const { checkClanChanges } = require('./automationEvents/clanlogsAutomation');
 // const { checkAttacks } = require('./automationEvents/attacksAutomation');
 // const { checkRace } = require('./automationEvents/scoresAutomation');
 const { updateClanInvites } = require('./automationEvents/createInviteLinkAutomation');
-const { postNudges } = require('./automationEvents/nudgesAutomation');
+// const { postNudges } = require('./automationEvents/nudgesAutomation');
+const { postNudges } = require('./automationEvents/warNudges');
 const { findPlayerAttacks } = require('./dataUpdates/findPlayerAttacksInClans.js');
 const { checkRace } = require('./automationEvents/endOfWarDayStats.js');
 const { updateMemberClanRoles } = require('../utilities/checkIfHaveRole.js');
@@ -26,6 +26,18 @@ module.exports = {
       name: "Over AFAM",
       type: ActivityType.Watching
     });
+
+    // Cache all members
+    console.log('Fetching members for all guilds on startup...');
+    for (const guild of client.guilds.cache.values()) {
+      try {
+        await fetchAllMembers(guild);
+      }
+      catch (error) {
+        console.error("Error fetching members for guild ${guild.id}");
+      }
+    }
+    console.log("All members fetched");
 
     // every thursday at 3am
     // resetPlayerData(client);
@@ -51,6 +63,9 @@ module.exports = {
 
     // post20WinsEmbeds(client);
 
+
+
+
     checkRace(client);
     postNudges(client);
     setInterval(async () => {
@@ -63,15 +78,32 @@ module.exports = {
 
     findPlayerAttacks(client);
 
-    await updateMemberClanRoles(client);
+    // await updateMemberClanRoles(client);
     setInterval(async () => {
       console.log("Updating roles");
       await updateMemberClanRoles(client);
-    }, 480000)
+    }, 550000)
 
 
   }
 }
+
+async function fetchAllMembers(guild) {
+  try {
+    // Fetch all members in the guild
+    const members = await guild.members.fetch();
+    // console.log(`Fetched ${members.size} members for guild: ${guild.id}`);
+  } catch (error) {
+    console.error(`Error fetching members for guild ${guild.id}:`, error);
+  }
+  sleep(100);
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
 
 async function resetPlayerData(client) {
   client.guilds.cache.forEach(async (guild) => {

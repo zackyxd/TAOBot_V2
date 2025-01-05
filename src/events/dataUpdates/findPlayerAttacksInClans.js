@@ -31,15 +31,15 @@ const cron = require('node-cron');
 // }
 
 const findPlayerAttacks = async (client) => {
-  // await findAttacks(client);
-  cron.schedule('0 */3 * * * 4,5,6,7', async function () {
+  await findAttacks(client);
+  cron.schedule('0 */4 * * * 4,5,6,7', async function () {
     findAttacks(client);
   }, {
     scheduled: true,
     timezone: 'America/Phoenix'
   });
 
-  cron.schedule('0 */3 0-2 * * 1', async function () {
+  cron.schedule('0 */4 0-2 * * 1', async function () {
     await findAttacks(client);
   }, {
     scheduled: true,
@@ -48,7 +48,7 @@ const findPlayerAttacks = async (client) => {
 }
 
 async function findAttacks(client) {
-  console.log("Checking all clan attacks");
+  console.log("Checking all clan attacks...");
   for (const guild of client.guilds.cache.values()) {
     const dbPath = API.findFileUpwards(__dirname, `guildData/${guild.id}.sqlite`);
     const db = new QuickDB({ filePath: dbPath, timeout: 5000 });
@@ -59,20 +59,22 @@ async function findAttacks(client) {
     const playerAttacksMap = new Map();
     for (const clantag in clans) {
       if (!clans[clantag]['family-clan']) continue;
-      console.log(`Processing clantag ${clantag}`);
+      // console.log(`Processing clantag ${clantag}`);
       const startClantagTime = Date.now();
       let raceData = await API.getCurrentRiverRace(clantag);
       if (!raceData || raceData.data) continue;
 
       let currentWarDay = (raceData.periodIndex % 7) - 2 || 1;
+      // currentWarDay = 2; // TODO
       for (const participant of raceData.clan.participants) {
         await processParticipant(db, participant, playerAttacksMap, currentWarDay);
-        await new Promise(resolve => setImmediate(resolve)); // Yield to the event loop
+        sleep(50);
+        // await new Promise(resolve => setImmediate(resolve)); // Yield to the event loop
       }
       console.log(`Finished processing clantag: ${clantag} in ${Date.now() - startClantagTime}ms`);
     }
     await savePlayerAttacks(db, playerAttacksMap);
-    console.log(`Finished setting everyone for all clans in guild ${guild.id}`);
+    console.log(`Finished setting everyones attacks for all clans in guild ${guild.id}`);
     // await cleanUpDatabase(db);
   }
 }
@@ -159,6 +161,9 @@ async function cleanUpDatabase(db) {
   console.log("All specified entries should be deleted");
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 
 

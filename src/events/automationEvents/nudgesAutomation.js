@@ -8,44 +8,6 @@ const { createSuccessEmbed, createExistEmbed, createErrorEmbed, createMaintenanc
 const cron = require('node-cron');
 const moment = require('moment-timezone');
 
-// module.exports = {
-//   name: Events.ClientReady,
-//   once: true,
-//   execute(client) {
-//     // Friday,Saturday,Sunday at 5pm, 7pm, 9pm, 11pm and 1am
-//     cron.schedule('0 17,19,21,23,1 * * 5,6,7', () => {
-//       postAutoNudge(client);
-//     }, {
-//       scheduled: true,
-//       timezone: "America/Phoenix"
-//     });
-
-//     // Thursday at 5-11pm
-//     cron.schedule('0 17,19,21,23 * * 4', () => {
-//       postAutoNudge(client);
-//     }, {
-//       scheduled: true,
-//       timezone: "America/Phoenix"
-//     });
-
-//     cron.schedule('13 20 * * 4', () => {
-//       postAutoNudge(client);
-//     }, {
-//       scheduled: true,
-//       timezone: "America/Phoenix"
-//     });
-
-//     // Monday at 1am
-//     cron.schedule('0 1 * * 1', () => {
-//       postAutoNudge(client);
-//     }, {
-//       scheduled: true,
-//       timezone: "America/Phoenix"
-//     });
-
-//   }
-// }
-
 const postNudges = async (client) => {
   // weekend at 7pm -> 1am
   cron.schedule('0 19,21,23,1 * * 5,6,7', () => {
@@ -133,11 +95,8 @@ async function postAutoNudge(client) {
         }
         await db.set(`clans.${clantag}`, clan);
       }
-
-
     }
   }
-
 }
 
 
@@ -168,7 +127,6 @@ async function grabAutoNudge(clantag, db, botId, channelId, client, guildId) {
     let warWeek = attackData.sectionIndex + 1; // week
     let periodIndex = attackData.periodIndex; // day 
 
-    console.log();
     if (whichDayType === 'warDay') {
       whichDayType = `War Week ${warWeek}`;
       oldWarDay = (periodIndex % 7) - 2;
@@ -455,12 +413,6 @@ async function grabAutoNudge(clantag, db, botId, channelId, client, guildId) {
     console.log(error);
   }
 }
-
-
-
-
-
-
 
 function sortList(list) {
   return sortedList = list.sort((a, b) => {
