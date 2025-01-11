@@ -9,7 +9,8 @@ require('dotenv/config');
 
 
 const checkRace = async (client) => {
-  cron.schedule('15-59 2 * * *', async function () {
+  // cron.schedule('15-59 2 * * *', async function () {
+  cron.schedule('15-59 2 * * 4,5,6,7,1', async function () {
     // cron.schedule('*/5 * * * * *', async function () {
     // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
     // Your code here
@@ -19,7 +20,8 @@ const checkRace = async (client) => {
     timezone: 'America/Phoenix'
   });
 
-  cron.schedule('0-20 3 * * *', async function () {
+  cron.schedule('0-20 3 * * 4,5,6,7,1', async function () {
+  // cron.schedule('0-20 3 * * *', async function () {
     // cron.schedule('*/5 * * * * *', async function () {
     // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
     // Your code here

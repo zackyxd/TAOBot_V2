@@ -141,20 +141,45 @@ module.exports = {
 
       return;
     }
+    const MAX_DESC_LENGTH = 2000;
+    console.log("Description length of check-clan is:", description.length);
+    let descriptions = splitDescription(description, MAX_DESC_LENGTH);
 
-    if (description.length < 1 || description.length > 2000) {
-      await interaction.editReply({ embeds: [createErrorEmbed(`There are no playertags in this ticket. This may be an error, contact Zacky.`)] });
+    if (description.length < 1) {
+      await interaction.editReply({ embeds: [createErrorEmbed(`The message was unable to send due to the length being ${description.length}. Likely no playertags added.`)] });
       return;
     }
     await interaction.editReply({ embeds: [createSuccessEmbed(`Sent list of players.`)] });
-    let embed = new EmbedBuilder()
-      .setTitle(`${clanData.name} Member Check`)
-      .setThumbnail(process.env.BOT_IMAGE)
-      .setColor(`Purple`)
-      // .setURL(`https://royaleapi.com/clan/${clanData.tag.substring(1)}`)
-      .setDescription(description);
+    for (let desc of descriptions) {
 
-    await interaction.channel.send({ embeds: [embed] })
+      let embed = new EmbedBuilder()
+        .setTitle(`${clanData.name} Member Check`)
+        .setThumbnail(process.env.BOT_IMAGE)
+        .setColor(`Purple`)
+        // .setURL(`https://royaleapi.com/clan/${clanData.tag.substring(1)}`)
+        .setDescription(desc);
 
+      await interaction.channel.send({ embeds: [embed] })
+    }
   }
+}
+
+function splitDescription(description, maxLength) {
+  let chunks = [];
+  while (description.length > 0) {
+    if (description.length > maxLength) {
+      // Find last newline char in limit
+      let chunkEnd = description.lastIndexOf('\n', maxLength);
+      if (chunkEnd === -1) {
+        chunkEnd = maxLength; // no newline found, split at maxlength
+      }
+      chunks.push(description.slice(0, chunkEnd));
+      description = description.slice(chunkEnd + 1);
+    }
+    else {
+      chunks.push(description);
+      description = "";
+    }
+  }
+  return chunks;
 }

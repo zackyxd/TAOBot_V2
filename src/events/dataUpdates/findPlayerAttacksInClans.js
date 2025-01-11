@@ -31,7 +31,7 @@ const cron = require('node-cron');
 // }
 
 const findPlayerAttacks = async (client) => {
-  await findAttacks(client);
+  // await findAttacks(client);
   cron.schedule('0 */4 * * * 4,5,6,7', async function () {
     findAttacks(client);
   }, {
@@ -47,36 +47,49 @@ const findPlayerAttacks = async (client) => {
   });
 }
 
+const participantBatchSize = 10; // Batch size for participants
+
 async function findAttacks(client) {
   console.log("Checking all clan attacks...");
-  for (const guild of client.guilds.cache.values()) {
+
+  const guildTasks = Array.from(client.guilds.cache.values()).map(async guild => {
     const dbPath = API.findFileUpwards(__dirname, `guildData/${guild.id}.sqlite`);
     const db = new QuickDB({ filePath: dbPath, timeout: 5000 });
     const clans = await db.get(`clans`);
-    if (!clans) continue;
-
+    if (!clans) return;
 
     const playerAttacksMap = new Map();
-    for (const clantag in clans) {
-      if (!clans[clantag]['family-clan']) continue;
-      // console.log(`Processing clantag ${clantag}`);
+    const clantagTasks = Object.keys(clans).map(async clantag => {
+      if (!clans[clantag]['family-clan']) return;
+
       const startClantagTime = Date.now();
       let raceData = await API.getCurrentRiverRace(clantag);
-      if (!raceData || raceData.data) continue;
+      if (!raceData || raceData.data) return;
 
       let currentWarDay = (raceData.periodIndex % 7) - 2 || 1;
-      // currentWarDay = 2; // TODO
-      for (const participant of raceData.clan.participants) {
-        await processParticipant(db, participant, playerAttacksMap, currentWarDay);
-        sleep(50);
-        // await new Promise(resolve => setImmediate(resolve)); // Yield to the event loop
+      const participants = raceData.clan.participants;
+
+      for (let i = 0; i < participants.length; i += participantBatchSize) {
+        const batch = participants.slice(i, i + participantBatchSize);
+        const participantTasks = batch.map(async participant =>
+          await processParticipant(db, participant, playerAttacksMap, currentWarDay)
+        );
+
+        // Process the current batch of participants
+        await Promise.all(participantTasks);
       }
-      console.log(`Finished processing clantag: ${clantag} in ${Date.now() - startClantagTime}ms`);
-    }
+
+      console.log(`Finished processing attacks for: ${clantag} in ${Date.now() - startClantagTime}ms`);
+      raceData = null; // Clear large object from memory
+    });
+
+    await Promise.all(clantagTasks);
     await savePlayerAttacks(db, playerAttacksMap);
-    console.log(`Finished setting everyones attacks for all clans in guild ${guild.id}`);
-    // await cleanUpDatabase(db);
-  }
+    playerAttacksMap.clear(); // Clear map from memory
+    console.log(`Finished setting everyone's attacks for all clans in guild ${guild.id}`);
+  });
+
+  await Promise.all(guildTasks);
 }
 
 async function processParticipant(db, participant, playerAttacksMap, currentWarDay) {
@@ -134,20 +147,27 @@ async function processParticipant(db, participant, playerAttacksMap, currentWarD
   }
   playerAttacksMap.set(participant.tag, playerData);
   await new Promise(resolve => setImmediate(resolve));  // Yield control
+  participant = null;
 }
-
-
 
 async function savePlayerAttacks(db, playerAttacksMap) {
-  for (const [tag, playerData] of playerAttacksMap) {
-    if (!playerData.discordId) {
-      await db.delete(`playertags.${tag}`);
+  // console.log("Saving player attacks:", playerAttacksMap);
+  for (const [tag, playerData] of playerAttacksMap.entries()) {
+    try {
+      // console.log("Setting playertag:", tag, playerData.playerName);
+      await db.set(`playertags.${tag}`, playerData);
+      // console.log(`Successfully set playertag: ${tag}`);
+      await new Promise(resolve => setImmediate(resolve)); // Yield to the event loop
+    } catch (error) {
+      console.error(`Failed to set playertag ${tag}:`, error);
     }
-    await db.set(`playertags.${tag}`, playerData);
-    // Yield to the event loop
-    await new Promise(resolve => setImmediate(resolve));
   }
+  // console.log("Finished saving player attacks");
 }
+
+module.exports = { findAttacks };
+
+
 
 async function cleanUpDatabase(db) {
   const playertags = await db.get(`playertags`);
@@ -164,7 +184,6 @@ async function cleanUpDatabase(db) {
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
-
 
 
 module.exports = { findPlayerAttacks };

@@ -14,6 +14,7 @@ const { postNudges } = require('./automationEvents/warNudges');
 const { findPlayerAttacks } = require('./dataUpdates/findPlayerAttacksInClans.js');
 const { checkRace } = require('./automationEvents/endOfWarDayStats.js');
 const { updateMemberClanRoles } = require('../utilities/checkIfHaveRole.js');
+const { removeMemberClanRoles } = require('../utilities/roleRemoval.js');
 
 // const { post20WinsEmbeds } = require('./20winchallenge/UpdateMatches');
 
@@ -62,6 +63,15 @@ module.exports = {
     });
 
     // post20WinsEmbeds(client);
+
+    // Auto remove roles
+    // cron.schedule('0 5 * * 1', async () => {
+    //   await removeMemberClanRoles(client);
+    // }, {
+    //   scheduled: true,
+    //   timezone: 'America/Phoenix'
+    // });
+
 
 
 

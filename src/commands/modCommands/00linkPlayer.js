@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, Embed } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder, EmbedBuilder, PermissionsBitField, ButtonBuilder, ButtonStyle, ActionRowBuilder, Embed } = require("discord.js");
 const path = require('path');
 const Database = require('better-sqlite3');
 const { QuickDB } = require("quick.db")
@@ -87,7 +87,9 @@ module.exports = {
         await interaction.editReply({ embeds: [await getPlayerEmbed(crAccount, user)] });
         await db.set(`playertags.${playertag}`, grabPreviousPlayertagData);
         try {
-          await user.setNickname(crAccount.name);
+          if (!user.permissions.has([PermissionsBitField.Flags.MuteMembers])) {
+            await user.setNickname(crAccount.name);
+          }
         } catch (error) {
           console.log("Couldnt change name: " + error)
           await interaction.followUp({ content: "Couldn't change their name, but link was still completed.", ephemeral: true })

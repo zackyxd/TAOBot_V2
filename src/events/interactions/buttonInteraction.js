@@ -181,7 +181,7 @@ module.exports = {
           // Edit the message with the updated embed
           await message.edit({ embeds: [updatedEmbed] });
         }
-        if (confirmationData.count < 1) {
+        if (confirmationData.count < 2) {
           return;
         }
 

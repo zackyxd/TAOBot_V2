@@ -210,7 +210,9 @@ async function getPlayerEmbed(crAccount, user, howManyAccounts) {
     .addFields(
       { name: `__CW2 Wins__ <:cw2:1196604288886124585>`, value: `${cw2Wins}`, inline: true },
       { name: `__CC Wins__ <:classicWin:1196602845890355290>`, value: `${classicWins}`, inline: true },
-      { name: `__GC Wins__ <:grandChallenge:1196602855482728560>`, value: `${grandWins}`, inline: true }
+      { name: `__GC Wins__ <:grandChallenge:1196602855482728560>`, value: `${grandWins}`, inline: true },
+      { name: `\t`, value: `\u200B<:outsideicon:1324707556026875914> [Ingame profile](<https://link.clashroyale.com/en/?playerInfo?id=${playertag}>)`, inline: false }
+
     )
     .setFooter({ text: `${userName}'s ${accountText}`, iconURL: userAvatarURL })
     .setDescription(description);

@@ -19,17 +19,18 @@ async function grabRace(clantag) {
 
 const postNudges = async (client) => {
 
-  cron.schedule('0 19,21,23,1 * * 5,6,7', () => {
-    postAutoNudge(client, "normal"); // normal
-    console.log("Sending Normal Nudge!");
+  // Monday at 1am
+  cron.schedule('0 1 * * 1', () => {
+    postAutoNudge(client, "normal");
   }, {
     scheduled: true,
     timezone: "America/Phoenix"
   });
 
-  cron.schedule('0 12,18,0 * * 5,6,7', () => {
-    postAutoNudge(client, "l2w"); // l2w
-    console.log("Sending L2W Nudge!");
+
+  cron.schedule('0 19,21,23,1 * * 5,6,7', () => {
+    postAutoNudge(client, "normal"); // normal
+    console.log("Sending Normal Nudge!");
   }, {
     scheduled: true,
     timezone: "America/Phoenix"
@@ -45,6 +46,27 @@ const postNudges = async (client) => {
     timezone: "America/Phoenix"
   });
 
+
+
+  // L2W NUDGES
+
+  // Monday at 1am
+  cron.schedule('0 0 * * 1', () => {
+    postAutoNudge(client, "l2w");
+  }, {
+    scheduled: true,
+    timezone: "America/Phoenix"
+  });
+
+  cron.schedule('0 12,18,0 * * 5,6,7', () => {
+    postAutoNudge(client, "l2w"); // l2w
+    console.log("Sending L2W Nudge!");
+  }, {
+    scheduled: true,
+    timezone: "America/Phoenix"
+  });
+
+
   // Thursday at 5-11pm
   cron.schedule('0 12,18 * * 4', () => {
     console.log("Sending L2W Nudge on Thursday!");
@@ -53,6 +75,7 @@ const postNudges = async (client) => {
     scheduled: true,
     timezone: "America/Phoenix"
   });
+
 
   // Testing TODO
   // cron.schedule('*/5 * * * * *', () => {
@@ -64,6 +87,7 @@ const postNudges = async (client) => {
 
   // Reset special data
   cron.schedule(`15 3 * * *`, () => {
+    // cron.schedule('*/5 * * * * *', () => {
     resetSpecialData(client);
   }, {
     scheduled: true,
@@ -72,35 +96,36 @@ const postNudges = async (client) => {
 }
 
 async function resetSpecialData(client) {
-  for (const guild of client.guilds.cache.values()) {
+  const guilds = Array.from(client.guilds.cache.values());
+  await Promise.all(guilds.map(async (guild) => {
     const dbPath = API.findFileUpwards(__dirname, `guildData/${guild.id}.sqlite`);
     const db = new QuickDB({ filePath: dbPath, timeout: 5000 });
     const clans = await db.get(`clans`);
-    if (!clans) {
-      continue;
-    }
-    for (const clantag in clans) {
+    if (!clans) return;
+    await Promise.all(Object.keys(clans).map(async (clantag) => {
       let clan = await db.get(`clans.${clantag}`);
       if (clan?.nudgeSettings?.noAttacksRemaining === true) {
         clan.nudgeSettings.noAttacksRemaining = false;
       }
       await db.set(`clans.${clantag}`, clan);
-    }
-  }
+    }));
+  }));
   console.log("All clan nudge data reset, ready for next day");
 }
 
 async function postAutoNudge(client, nudgeType) {
   const botId = client.user.id;
-  for (const guild of client.guilds.cache.values()) {
+  const guilds = Array.from(client.guilds.cache.values());
+
+  await Promise.all(guilds.map(async (guild) => {
     const dbPath = API.findFileUpwards(__dirname, `guildData/${guild.id}.sqlite`);
     const db = new QuickDB({ filePath: dbPath, timeout: 5000 });
     const clans = await db.get(`clans`);
     if (!clans) {
-      continue;
+      return;
     }
 
-    for (const clantag in clans) {
+    await Promise.all(Object.keys(clans).map(async (clantag) => {
       // console.log(clantag);
       // let checkClan = await API.getCurrentRiverRace(clantag);
       // if (checkClan.data) {
@@ -113,8 +138,9 @@ async function postAutoNudge(client, nudgeType) {
       // console.log(clantag, channelId);
       if (!channelId) {
         console.log("No channel ID to post to:", clantag);
-        continue;
+        return;
       }
+      await sleep(500);
       let clanMembers = await grabClanMembers(clantag);
       let raceData = await grabRace(clantag);
 
@@ -122,36 +148,43 @@ async function postAutoNudge(client, nudgeType) {
       if (!raceData) { console.error(`There was no clan data for: ${clantag} `); return; }
       if (getRaceType(raceData) === 0) {
         console.log("Today is training day, no nudges!");
-        continue;
+        return;
       }
       if (getRaceType(raceData) === 1 && raceData.clan.fame >= 10000) {
         console.log("Clan fame is over 10k on war day, skip nudge");
-        continue;
+        return;
       }
       if (clan?.nudgeSettings?.lastNudged) {
         let lastNudged = moment(clan.nudgeSettings.lastNudged);
         let timeDifference = currentTime.diff(lastNudged, 'minutes');
         if (timeDifference < 60) {
           console.log("No autonudge, time from last nudge within 1 hour", timeDifference);
-          continue;
+          return;
         }
       }
       if (clan?.nudgeSettings?.enabled === false) {
-        continue;
+        return;
       }
 
       let sendMessage;
       if (nudgeType === "l2w" && clan?.l2w === true) {
         sendMessage = await checkAttacks(db, clanMembers, raceData, client, guild.id, channelId, true, botId);
+        if (!sendMessage) {
+          console.log("SendMessage didn't exist to send L2W autonudge for clantag", clantag);
+          return;
+        }
       }
       else if (nudgeType === "normal" && clan?.l2w !== true) {
         sendMessage = await checkAttacks(db, clanMembers, raceData, client, guild.id, channelId, false, botId);
+        if (!sendMessage) {
+          console.log("SendMessage didn't exist to send NORMAL autonudge for clantag", clantag);
+          return;
+        }
       }
-      if (!sendMessage) {
-        console.log("SendMessage didn't exist to send autonudge for clantag", clantag);
-        continue;
+      else {
+        console.log("Not sending nudge at this time for:", clantag);
+        return;
       }
-
 
       // If it gets down here, it means nudge setting exists.
       let channel = client.channels.cache.get(channelId);
@@ -159,20 +192,24 @@ async function postAutoNudge(client, nudgeType) {
         try {
           if (sendMessage.embed) { // send special message
             if (sendMessage.noAttacksRemaining && clan?.nudgeSettings?.noAttacksRemaining !== true) {
+              console.log("All attacks finished nudge");
               await channel.send({ embeds: [sendMessage.embed] }) // sends if all attacks done
               clan.nudgeSettings.noAttacksRemaining = true;
             }
             else if (sendMessage.areAttacksRemaining) {
+              console.log("No available attackers to finish attacks nudge");
               await channel.send({ embeds: [sendMessage.embed] }) // sends if all attacks done
             }
           }
           else {
+            console.log("Normal nudge");
             await channel.send(sendMessage); // Send as normal nudge
           }
         } catch (error) {
           console.log("Invalid reply to autonudge", error);
-          continue;
+          return;
         }
+
         if (!clan.nudgeSettings) {
           clan.nudgeSettings = { lastNudged: currentTime };
         } else {
@@ -180,8 +217,8 @@ async function postAutoNudge(client, nudgeType) {
         }
         await db.set(`clans.${clantag}`, clan);
       }
-    }
-  }
+    }));
+  }));
   console.log("Finished clan attack nudges");
 }
 
@@ -380,7 +417,7 @@ async function checkAttacks(db, members, raceData, client, guildId, channelId, l
       .setColor("Orange")
       .setAuthor({ name: `${raceData.clan.name} scheduled autonudge`, iconURL: process.env.BOT_IMAGE });
 
-    return { embed: embed, areAttacksRemaining: true }; // no attacks left, no more nudges for the rest of the night
+    return { embed: embed, areAttacksRemaining: true }; // attacks leftover but none in clan that can attack, keep nudging
   }
 
 
@@ -405,9 +442,8 @@ async function checkAttacks(db, members, raceData, client, guildId, channelId, l
       let discordData = await db.get(`users.${player.discordId}`).catch(() => null);
       let role = player.role;
       let attackString = "";
-      if (hour >= 19 || hour <= 2) {
+      if (hour >= 21 || hour <= 2) {
         attackString += await checkIfPing(role, player, discordData, true);
-        // console.log("PINGED ALL BC TIME");
       }
       else {
         attackString += await checkIfPing(role, player, discordData, false);
@@ -441,7 +477,7 @@ async function checkAttacks(db, members, raceData, client, guildId, channelId, l
     for (const tag in memberNotAllAvailableIC) {
       if (memberNotAllAvailableIC.hasOwnProperty(tag)) {
         const member = memberNotAllAvailableIC[tag];
-        reply += `* ${member.playerName} (-${4 - member.availableAttacks}) 🤬\n`; // red face means cant use all 4 attacks, in clan
+        reply += `* ${member.playerName} (-${4 - member.availableAttacks}) 🛑\n`; // red face means cant use all 4 attacks, in clan // TODO?
       }
     }
     for (const tag in memberNotAllAvailableOOC) {
@@ -512,11 +548,24 @@ async function checkIfPing(role, playerData, discordData, all) {
     }
 
     if (discordData) {
-      if (discordData['replace-me'] === true && (playerData.role !== 'coLeader' && playerData.role !== 'leader')) {
+      if (discordData['replace-me'] === true && (playerData.role !== 'coLeader' || playerData.role !== 'leader')) {
         emojis.push('⚠️');
         return pingPlayer(playerData, true, false, emojis);
       }
-      return pingPlayer(playerData, true, role !== 'coLeader' && role !== 'leader', emojis);
+
+      // if  pingCo is true, ping them
+      if (discordData?.pingCo === true) {
+        return pingPlayer(playerData, true, true, emojis);
+      }
+      else if (discordData?.pingCo === false || ((playerData.role === 'coLeader' || playerData.role === 'leader'))) {
+        if (discordData?.pingCo === false) {
+          emojis.push('👴')
+        }
+        return pingPlayer(playerData, true, false, emojis);
+      }
+      else {
+        return pingPlayer(playerData, true, true, emojis);
+      }
     }
   }
 
@@ -537,11 +586,21 @@ async function checkIfPing(role, playerData, discordData, all) {
     return pingPlayer(playerData, false, false, emojis);
   }
 
-  if (discordData && (role === 'coLeader' || role === 'leader')) {
-    if (discordData.pingCo) { // Don't ping if false
+  // if (discordData && (role === 'coLeader' || role === 'leader')) {
+  if (discordData) {
+    if (discordData?.pingCo === true) { // Don't ping if false
       return pingPlayer(playerData, true, true, emojis);
     }
-    return `* **${playerData.playerName}**`; // don't ping co-leaders/leaders
+    else if (discordData?.pingCo === false || ((playerData.role === 'coLeader' || playerData.role === 'leader'))) {
+      if (discordData?.pingCo === false) {
+        emojis.push('👴')
+      }
+      return pingPlayer(playerData, true, false, emojis);
+    }
+    else {
+      return pingPlayer(playerData, true, true, emojis)
+    }
+    return `* **${playerData.playerName}** ❓`; // don't ping co-leaders/leaders
   }
 
   if (discordData['replace-me'] === true) {
@@ -563,7 +622,6 @@ async function checkIfPing(role, playerData, discordData, all) {
 
 function pingPlayer(playerData, linked, ping, emojis = []) {
   const emojiString = emojis.join(' ');
-
   if (!linked) {
     return `* ${playerData.playerName} (__not linked__) ${emojiString}`;
   }
@@ -647,6 +705,11 @@ function sortObjectByAttribute(obj, attribute) {
   // Convert the sorted array back into an object
   return Object.fromEntries(entries);
 }
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 
 
 module.exports = { postNudges };

@@ -108,6 +108,10 @@ async function getClan(clantag) {
   else if (clanData === 503) {
     return createMaintenanceEmbed();
   }
+  else if (!clanData || !clanData.memberList) {
+    console.error(`Invalid getClan data received for clantag: ${clantag}`);
+    return null;
+  }
   return clanData;
 }
 

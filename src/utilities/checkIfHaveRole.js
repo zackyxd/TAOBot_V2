@@ -50,6 +50,8 @@ const processClan = async (clantag, db, grabRole, guild) => {
     // console.log("Updating clan member roles for:", clantag);
 
     const membersInClan = await getClanMembers(clantag); // grab members in clan
+    if (!membersInClan) return;
+    await sleep(75);
     const discordIds = await findDiscordIds(membersInClan, guild.id); // grab discord ids of members if available
     await addMissingClanRole(discordIds, roleId, grabRole, guild);
     // console.log(`Finished processing check-roles for clantag: ${clantag}`);
@@ -63,6 +65,10 @@ const processClan = async (clantag, db, grabRole, guild) => {
 async function getClanMembers(clantag) {
   if (clantag.charAt(0) !== "#") clantag = "#" + clantag;
   let clanData = await API.getClan(clantag);
+  if (!clanData || !clanData.memberList) {
+    console.error(`Error: No member list found for clantag ${clantag} for checking roles`)
+    return null;
+  }
   // console.log("Fetched member list for:", clantag);
   return clanData.memberList;
 }

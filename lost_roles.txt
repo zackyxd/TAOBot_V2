@@ -1,0 +1,15 @@
+These players lost these roles:
+Clan: AddictedChill, Role: addicted chill, Roles removed: 1
+TEMP BOT : 1324566509900795975
+
+
+Clan: Clash of Clams, Role: clash of clams, No roles removed
+
+Clan: TheAddictedOnes, Role: addicted1, Roles removed: 1
+Dragon King : 490997811920240650
+
+
+Members that do not lose roles: 1
+Zackytest : 272201620446511104
+To add members to this list, do "/keep-roles @user true".
+
