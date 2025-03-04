@@ -140,6 +140,8 @@ module.exports = {
         console.log(`Processing clan: ${clan}, Clantag: ${clantag}, War Category: ${clanWarCategory}`); // Debugging statement
         if (clanWarCategory !== warCategory) continue; // Skip if the war category doesn't match
 
+        const dontPingIds = ['927534279725047878']; // For users that dotn want to earn roles
+
         for (const player of players) {
 
           const highestRole = roles.find(role => player.fameAverage >= role.threshold);
@@ -157,7 +159,7 @@ module.exports = {
             let user = await db.get(`playertags.#${player.playertag}`);
             if (!user) continue;
             let discordId = user.discordId;
-            if (!discordId) continue;
+            if (!discordId || (discordId && dontPingIds.includes(discordId))) continue;
             let member = await interaction.guild.members.fetch(discordId);
 
             // User has the highest role available already, skip
@@ -227,7 +229,7 @@ module.exports = {
             // const buttonRow = new ActionRowBuilder().addComponents(refreshButton);
             try {
               const channel = await interaction.client.channels.fetch(channelId);
-              await channel.send({ embeds: [embed] });
+              await channel.send({ embeds: [embed] }); // UNCOMMENT
               // await channel.send({ embeds: [embed], components: [buttonRow] });
             } catch (error) {
               console.log("Couldn't send new roles to channel");

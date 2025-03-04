@@ -55,12 +55,13 @@ module.exports = {
           tag = '#' + tag;
         }
         let account = await API.getPlayer(tag);
+        console.log(account);
         if (!account.data) {
           validTags.add(tag);
         }
         else {
           if (account.data.description.includes("Maintenance")) {
-            await message.channel.send({ embeds: [account] });
+            // await message.channel.send({ embeds: [account] });
           }
         }
       }

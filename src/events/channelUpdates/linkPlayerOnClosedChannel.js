@@ -54,11 +54,11 @@ module.exports = {
         try {
           let playertagLink = await db.get(`playertags.${tag}.discordId`);
           if (playertagLink && playertagLink !== discordId) {
-            await channel.send({ embeds: [createExistEmbed(`The tag ${tag} was already linked to <@${playertagLink}>. Not linking it.`)] });
+            await channel.send({ embeds: [createExistEmbed(`The tag ${tag} (${crAccount.name}) was already linked to <@${playertagLink}>. Not linking it.`)] });
             continue;
           }
           else if (playertagLink && playertagLink === discordId) {
-            await channel.send({ embeds: [createSuccessEmbed(`The tag ${tag} was already linked to this player.`)] })
+            await channel.send({ embeds: [createSuccessEmbed(`The tag ${tag} (${crAccount.name}) was already linked to this player.`)] })
             continue;
           }
 

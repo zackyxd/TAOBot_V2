@@ -24,7 +24,7 @@ module.exports = {
   async execute(client) {
     console.log(`Ready! Logged in as ${client.user.tag}`);
     client.user.setActivity({
-      name: "Over AFAM",
+      name: "Over AAFAM",
       type: ActivityType.Watching
     });
 
@@ -42,7 +42,7 @@ module.exports = {
 
     // every thursday at 3am
     // resetPlayerData(client);
-    cron.schedule('0 3 * * 4', async function () {
+    cron.schedule('0 2 * * 4', async function () {
       // cron.schedule('*/5 * * * * *', async function () {
       // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
       // Your code here
@@ -52,7 +52,7 @@ module.exports = {
       timezone: 'America/Phoenix'
     });
 
-    cron.schedule('0 3 * * *', async function () {
+    cron.schedule('35 2 * * *', async function () {
       // cron.schedule('*/5 * * * * *', async function () {
       // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
       // Your code here
@@ -89,10 +89,10 @@ module.exports = {
     findPlayerAttacks(client);
 
     // await updateMemberClanRoles(client);
-    setInterval(async () => {
-      console.log("Updating roles");
-      await updateMemberClanRoles(client);
-    }, 550000)
+    // setInterval(async () => {
+    //   // console.log("Updating roles");
+    //   await updateMemberClanRoles(client);
+    // }, 2100000)
 
 
   }

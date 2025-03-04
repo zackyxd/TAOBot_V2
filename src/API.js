@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require('path');
 const axios = require("axios");
 const { createSuccessEmbed, createExistsEmbed, createErrorEmbed, createMaintenanceEmbed } = require('./utilities/embedUtility.js');
-
+const { QuickDB } = require('quick.db');
 
 async function fetchData(url, filename, print) {
   try {
@@ -39,7 +39,7 @@ async function fetchData(url, filename, print) {
   } catch (error) {
     console.log(`Fetch failed with ${url}: ${error.message}`);
     if (error.response) {
-      console.log(`Error response data: ${JSON.stringify(error.response.data, null, 2)}`);
+      // console.log(`Error response data: ${JSON.stringify(error.response.data, null, 2)}`);
       const statusCode = error.response.status;
       if (statusCode === 404) {
         return 404;
@@ -158,6 +158,12 @@ function findFileUpwards(startDir, fileName) {
   return null;
 }
 
+async function getDb(guildId) {
+  const dbPath = findFileUpwards(__dirname, `guildData/${guildId}.sqlite`);
+  const db = new QuickDB({ filePath: dbPath });
+  return db;
+}
+
 module.exports = {
   fetchData,
   getPlayer,
@@ -165,5 +171,6 @@ module.exports = {
   getPlayerBattleHistory,
   getCurrentRiverRace,
   getRiverRaceLog,
-  findFileUpwards
+  findFileUpwards,
+  getDb
 };

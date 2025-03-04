@@ -11,6 +11,17 @@ require('dotenv/config');
 const checkRace = async (client) => {
   // cron.schedule('15-59 2 * * *', async function () {
   cron.schedule('15-59 2 * * 4,5,6,7,1', async function () {
+    // cron.schedule('*/10 * * * * *', async function () {
+    // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
+    // Your code here
+    postRace(client);
+  }, {
+    scheduled: true,
+    timezone: 'America/Phoenix'
+  });
+
+  cron.schedule('0-40 3 * * 4,5,6,7,1', async function () {
+    // cron.schedule('0-59 8 * * *', async function () {
     // cron.schedule('*/5 * * * * *', async function () {
     // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
     // Your code here
@@ -20,16 +31,23 @@ const checkRace = async (client) => {
     timezone: 'America/Phoenix'
   });
 
-  cron.schedule('0-20 3 * * 4,5,6,7,1', async function () {
-  // cron.schedule('0-20 3 * * *', async function () {
-    // cron.schedule('*/5 * * * * *', async function () {
-    // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
-    // Your code here
-    postRace(client);
-  }, {
-    scheduled: true,
-    timezone: 'America/Phoenix'
-  });
+  cron.schedule('45 3 * * *', async function () {
+    client.guilds.cache.forEach(async (guild) => {
+      const db = await API.getDb(guild.id);
+      const clans = await db.get('clanTest');
+      if (!clans) return;
+
+      for (const clantag in clans) {
+        let clanInfo = clans[clantag];
+        if (clanInfo['postedRace'] === true) {
+          clanInfo['postedRace'] = false;
+          clans[clantag] = clanInfo;
+        }
+      }
+      await db.set('clanTest', clans)
+    })
+    console.log("Finished resetting all posted races");
+  })
 }
 
 // Post the race embeds
@@ -55,14 +73,19 @@ async function postRace(client) {
         if (!oldRaceInfo) { // If no previous race info, add it.
           console.log("No race info, adding:", clantag);
           let grabData = await getNewData(clantag);
-          await addToDatabase(clantag, grabData.data, guild.id);
+          await addToDatabase(clantag, grabData.data, guild.id, false);
+          continue;
+        }
+
+        if (oldRaceInfo?.postedRace === true) {
+          console.log("Race has already been posted for:", oldRaceInfo.clanName, ". Do not post again yet.");
           continue;
         }
         // console.log("Old vs new periodindex:", oldRaceInfo.periodIndex, newPeriodIndex);
         let raceType = checkWhichTypeRace(oldRaceInfo.periodType); // Get race type. 0, 1, 2
         if (!isNewDay(oldRaceInfo.attacks, newAttacks, oldRaceInfo.periodIndex, raceData.periodIndex, oldRaceInfo.clanName)) {
           console.log("Not new day, update database with new data");
-          await addToDatabase(clantag, raceData, guild.id)
+          await addToDatabase(clantag, raceData, guild.id, false)
           continue;
         }
         // console.log("RaceType entered:", raceType);
@@ -83,14 +106,15 @@ async function postRace(client) {
         else {
           // Training Day
           console.log("Training Day, update database and wait for non-training day");
-          await addToDatabase(clantag, raceData, guild.id);
+          await addToDatabase(clantag, raceData, guild.id, false);
           continue;
         }
+
         try {
           console.log("POST FOR:", clantag);
           await channel.send({ embeds: [embed] });  // Send the message
           await channel.send({ embeds: [embed2] });  // Send the message
-          await addToDatabase(clantag, raceData, guild.id);
+          await addToDatabase(clantag, raceData, guild.id, true);
           console.log(`Message sent to guild: ${guild.name}`);
         } catch (error) {
           console.error(`Failed to send message to guild: ${guild.name}`, error);
@@ -391,7 +415,8 @@ async function outputColoInfo(clans, ogClantag, periodIndex, mainClanName) {
 }
 
 // Data given is full API data
-async function addToDatabase(clantag, data, guildId) {
+// posted is whether or not it has posted yet
+async function addToDatabase(clantag, data, guildId, posted) {
   // console.log(`Updating ${clantag} to database`)
   // console.log(data);
   // console.log(`Storing this data:`, data);
@@ -452,7 +477,8 @@ async function addToDatabase(clantag, data, guildId) {
     periodType: data.periodType,
     clantag: clantag,
     playersRemaining: playersRemainingForAttacks,
-    clanName: data.clan.name
+    clanName: data.clan.name,
+    postedRace: posted
   });
   // console.log(test);
 }

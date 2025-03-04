@@ -14,7 +14,8 @@ module.exports = {
     .addChannelOption(option =>
       option.setName('channel')
         .setDescription('Which channel should these stats be sent to?')
-        .setRequired(true)),
+        .setRequired(true))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
 
   async execute(interaction) {
     if (!interaction.isChatInputCommand()) return;

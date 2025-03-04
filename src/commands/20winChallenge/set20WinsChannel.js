@@ -11,7 +11,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("20wins")
     .setDescription("Use this command to make this channel for 20 win challenges posts")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageServer),
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
 
   async execute(interaction) {
     if (!interaction.isChatInputCommand()) return;

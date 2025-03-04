@@ -16,7 +16,7 @@ module.exports = {
         .setDescription("Role that members must have")
         .setRequired(true)
     )
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageServer),
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   async execute(interaction) {
     if (!interaction.isChatInputCommand()) return;

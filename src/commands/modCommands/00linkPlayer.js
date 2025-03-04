@@ -227,7 +227,7 @@ async function getPlayerEmbed(account, user) {
   description += `__**Card Levels**__ <:cards:1196602848411127818>\n<:Evolutions:1248347132088418478>: ${evolutions}\n<:experience15:1196504104256671794>: ${level15}\n<:experience14:1196504101756874764>: ${level14}\n<:experience13:1196504100200796160>: ${level13}`;
   let levelIcon = findEmojiId(`experience${level}`)
   //const fileReturn = new AttachmentBuilder(`arenas/league${currentPOL}.png`);
-  let playerLeagueIcon = getLink("league" + account.currentPathOfLegendSeasonResult.leagueNumber + ".png");
+  let playerLeagueIcon = getLink("league" + currentPOL + ".png");
   const embedReturn = new EmbedBuilder()
     .setTitle(`${name} <:experience${level}:${levelIcon}>\n`)
     .setThumbnail(playerLeagueIcon)

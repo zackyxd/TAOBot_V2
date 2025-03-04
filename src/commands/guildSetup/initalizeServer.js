@@ -8,7 +8,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("initialize-server")
     .setDescription("Initalize your server to start saving data. Just run this command.")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageServer),
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
 
   async execute(interaction) {
     if (!interaction.isChatInputCommand()) return;

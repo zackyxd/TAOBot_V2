@@ -29,7 +29,7 @@ module.exports = {
             .setDescription("Which role will be pinged?")
             .setRequired(true))
     )
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageServer),
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
 
   async execute(interaction) {
     if (!interaction.isChatInputCommand()) return;

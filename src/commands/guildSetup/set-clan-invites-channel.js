@@ -16,7 +16,7 @@ module.exports = {
         .setDescription("Channel to post invites to")
         .setRequired(true)
     )
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageServer),
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
 
   async execute(interaction) {
     if (!interaction.isChatInputCommand()) return;

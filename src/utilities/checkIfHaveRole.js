@@ -49,11 +49,16 @@ const processClan = async (clantag, db, grabRole, guild) => {
     }
     // console.log("Updating clan member roles for:", clantag);
 
-    const membersInClan = await getClanMembers(clantag); // grab members in clan
+    const { memberList: membersInClan, clanWarTrophies } = await getClanMembers(clantag); // grab members in clan
     if (!membersInClan) return;
     await sleep(75);
     const discordIds = await findDiscordIds(membersInClan, guild.id); // grab discord ids of members if available
-    await addMissingClanRole(discordIds, roleId, grabRole, guild);
+
+    let over5000Clan = false;
+    if (clanWarTrophies >= 5000) {
+      over5000Clan = true; // if above 5000, give role to coleaders
+    }
+    await addMissingClanRole(discordIds, roleId, grabRole, guild, over5000Clan);
     // console.log(`Finished processing check-roles for clantag: ${clantag}`);
   } catch (error) {
     console.error("Error processing clan:", clantag, error);
@@ -70,7 +75,9 @@ async function getClanMembers(clantag) {
     return null;
   }
   // console.log("Fetched member list for:", clantag);
-  return clanData.memberList;
+  const memberList = clanData.memberList;
+  const clanWarTrophies = clanData.clanWarTrophies;
+  return { memberList, clanWarTrophies };
 }
 
 // find discord ids in my database, return as set for unique people
@@ -88,24 +95,24 @@ async function findDiscordIds(members, guildId) {
 }
 
 
-async function addMissingClanRole(discordIds, roleId, mustHaveRole, guild) {
+async function addMissingClanRole(discordIds, roleId, mustHaveRole, guild, over5000Clan) {
   let rolePromises = [];
   for (const discordId of discordIds) {
-    rolePromises.push(addRoleToMember(discordId, roleId, mustHaveRole, guild));
+    rolePromises.push(addRoleToMember(discordId, roleId, mustHaveRole, guild, over5000Clan));
     sleep(75);
   }
   await Promise.all(rolePromises);
 }
 
-const addRoleToMember = async (discordId, roleId, mustHaveRole, guild) => {
+const addRoleToMember = async (discordId, roleId, mustHaveRole, guild, over5000Clan) => {
   try {
     let member = await guild.members.fetch(discordId);
-    if (mustHaveRole && member.roles.cache.has(mustHaveRole)) { // must have global role (must have role)
+    if (mustHaveRole && member.roles.cache.has(mustHaveRole) && (!member.permissions.has(PermissionsBitField.Flags.MuteMembers) || over5000Clan)) { // must have global role (must have role)
       await member.roles.add(roleId);
       await sleep(100);
     }
   } catch (error) {
-    console.log(`Couldn't fetch user ${discordId}, do not give any roles`);
+    console.log(`${error}: Couldn't fetch user ${discordId}, do not give any roles`);
   }
 }
 

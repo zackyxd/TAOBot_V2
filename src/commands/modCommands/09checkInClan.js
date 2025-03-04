@@ -53,11 +53,13 @@ module.exports = {
     }
 
     let ifPlayerInClan = {};
+    let membersInClanCount = 0;
     // Use Promise.all to fetch player data concurrently
     let playerPromises = members.map(async member => {
       let player = await API.getPlayer(member);
       let playerTag = player.tag;
       if (membersInClan[playerTag]) {
+        membersInClanCount++;
         ifPlayerInClan[playerTag] = { name: player.name, playertag: player.tag, inClan: true, level: player.expLevel };
       } else {
         ifPlayerInClan[playerTag] = { name: player.name, playertag: player.tag, inClan: false, level: player.expLevel };
@@ -69,36 +71,71 @@ module.exports = {
       return a[1].name.localeCompare(b[1].name);
     });
 
-    let sortedIfPlayerInClan = Object.fromEntries(sortedNames);
 
-    let description = "";
+
+    let sortedIfPlayerInClan = Object.fromEntries(sortedNames);
+    // let description = "";
     let usersToPing = new Set();
     let usersNotPing = new Set();
 
+    const MAX_FIELD_LENGTH = 25;
+    let fieldContent = [];
+    // Send embed
+    let embed = new EmbedBuilder()
+      .setTitle(`${clanData.name} Member Check (${membersInClanCount}/${members.length})`)
+      .setThumbnail(process.env.BOT_IMAGE)
+      .setColor(`Purple`);
     for (let player in sortedIfPlayerInClan) {
+      console.log("Saw player:", player)
       let playerData = sortedIfPlayerInClan[player];
 
-      if (playerData.inClan === true && playerData.level >= 25) {
-        description += `[${playerData.name}](<https://royaleapi.com/player/${(playerData.playertag).substring(1)}>) ✅\n`;
-      } else if (playerData.inClan === false && playerData.level >= 25) {
-        description += `[${playerData.name}](<https://royaleapi.com/player/${(playerData.playertag).substring(1)}>) ❌\n`;
+      fieldContent.push({
+        name: '\t',
+        value: `[${playerData.name}](<https://royaleapi.com/player/${(playerData.playertag).substring(1)}>) ${playerData.inClan ? '✅' : '❌'}`,
+        inline: true
+      })
+
+      if (fieldContent.length >= MAX_FIELD_LENGTH && !pingMissing) {
+        embed.addFields(fieldContent);
+        if (membersInClanCount === members.length) {
+          embed.setFooter({ text: 'All members in this channel have joined!' })
+        }
+        await interaction.channel.send({ embeds: [embed] });
+
+        embed = new EmbedBuilder()
+          .setTitle(`${clanData.name} Member Check (cont.)`)
+          .setThumbnail(process.env.BOT_IMAGE)
+          .setColor(`Purple`);
+        fieldContent = [];
+        // .setURL(`https://royaleapi.com/clan/${clanData.tag.substring(1)}`)
       }
+
+
+      // if (playerData.inClan === true) {
+      //   fieldContent += `[${playerData.name}](<https://royaleapi.com/player/${(playerData.playertag).substring(1)}>) ${playerData.inClan ? '✅' : '❌'}`;
+      // } else if (playerData.inClan === false) {
+      //   fieldContent += `[${playerData.name}](<https://royaleapi.com/player/${(playerData.playertag).substring(1)}>) ❌\n`;
+      // }
 
       // Fetch the Discord user ID for each player tag
       let discordId = await db.get(`playertags.${playerData.playertag}.discordId`);
 
-      // Add or remove discordId from sets based on player's inClan status
-      if (playerData.inClan === true && playerData.level >= 25) {
-        usersNotPing.add(discordId);
-        if (usersToPing.has(discordId)) {
-          usersToPing.delete(discordId);
-        }
-      } else if (playerData.inClan === false && playerData.level >= 25) {
+
+      if (playerData.inClan === false) { // && playerData.level > 25
         if (!usersNotPing.has(discordId)) {
           console.log("Adding discordId to usersToPing: ", discordId);
           usersToPing.add(discordId);
         }
       }
+    }
+
+    // Add any remaining content as a field
+    if (fieldContent.length > 0 && !pingMissing) {
+      embed.addFields(fieldContent);
+      if (membersInClanCount === members.length) {
+        embed.setFooter({ text: 'All members in this channel have joined!' });
+      }
+      await interaction.channel.send({ embeds: [embed] });
     }
 
     let playerPings1 = `**You have not joined \`${clanData.name}\` yet, please join:** `;
@@ -133,6 +170,9 @@ module.exports = {
         let embed = new EmbedBuilder()
           .setColor('#00FF00') // Green color for success
           .setDescription(`## [Click here to join ${clanInfo.clanName}](<${clanInfo.clanLink}>)\n-# Expires: <t:${clanInfo.expiryTime}:R>`) // Make the message bold
+        if (membersInClanCount === members.length) {
+          embed.setFooter({ text: 'All members in this channel have joined!' })
+        }
         // .setFooter({ text: convertUnixToTime(clanInfo.expiryTime) })
         await interaction.channel.send(pingMessage);
         await interaction.channel.send({ embeds: [embed] });
@@ -141,26 +181,33 @@ module.exports = {
 
       return;
     }
-    const MAX_DESC_LENGTH = 2000;
-    console.log("Description length of check-clan is:", description.length);
-    let descriptions = splitDescription(description, MAX_DESC_LENGTH);
 
-    if (description.length < 1) {
-      await interaction.editReply({ embeds: [createErrorEmbed(`The message was unable to send due to the length being ${description.length}. Likely no playertags added.`)] });
-      return;
-    }
+    // const MAX_DESC_LENGTH = 2000;
+    // console.log("Description length of check-clan is:", description.length);
+    // let descriptions = splitDescription(description, MAX_DESC_LENGTH);
+
+    // if (description.length < 1) {
+    //   await interaction.editReply({ embeds: [createErrorEmbed(`The message was unable to send due to the length being ${description.length}. Likely no playertags added.`)] });
+    //   return;
+    // }
+    // await interaction.editReply({ embeds: [createSuccessEmbed(`Sent list of players.`)] });
+    // for (let desc of descriptions) {
+
+    //   let embed = new EmbedBuilder()
+    //     .setTitle(`${clanData.name} Member Check (${membersInClanCount}/${members.length})`)
+    //     .setThumbnail(process.env.BOT_IMAGE)
+    //     .setColor(`Purple`)
+    //     // .setURL(`https://royaleapi.com/clan/${clanData.tag.substring(1)}`)
+    //     .setDescription(desc);
+    //   console.log(membersInClanCount, members.length);
+    //   if (membersInClanCount === members.length) {
+    //     embed.setFooter({ text: 'All members in this channel have joined!' })
+    //   }
+
+    //   await interaction.channel.send({ embeds: [embed] })
+    // }
+
     await interaction.editReply({ embeds: [createSuccessEmbed(`Sent list of players.`)] });
-    for (let desc of descriptions) {
-
-      let embed = new EmbedBuilder()
-        .setTitle(`${clanData.name} Member Check`)
-        .setThumbnail(process.env.BOT_IMAGE)
-        .setColor(`Purple`)
-        // .setURL(`https://royaleapi.com/clan/${clanData.tag.substring(1)}`)
-        .setDescription(desc);
-
-      await interaction.channel.send({ embeds: [embed] })
-    }
   }
 }
 

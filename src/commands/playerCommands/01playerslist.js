@@ -83,12 +83,13 @@ module.exports = {
 };
 
 async function getPlayerEmbed(crAccount, user, howManyAccounts) {
-  const accountText = howManyAccounts === 1 ? 'Account' : 'Accounts';
+  const accountText = howManyAccounts === 1 ? 'account' : 'accounts';
   const discordId = user.user.id;
   const userName = user.nickname || user.user.username;
   const userAvatarURL = user.user.displayAvatarURL();
   let name = crAccount.name;
-  let playertag = (crAccount.tag).substring(1);
+  let playertag = (crAccount.tag);
+  let playertagTrimmed = (crAccount.tag).substring(1);
   let level = crAccount.expLevel;
   let role = crAccount?.role ?? '';
   let clan = crAccount?.clan?.name ?? 'No Clan';
@@ -205,19 +206,18 @@ async function getPlayerEmbed(crAccount, user, howManyAccounts) {
   const embedReturn = new EmbedBuilder()
     .setTitle(`${name} <:experience${level}:${levelIcon}>`)
     .setThumbnail(playerLeagueIcon)
-    .setURL(`https://royaleapi.com/player/${playertag}`)
+    .setURL(`https://royaleapi.com/player/${playertagTrimmed}`)
     .setColor("Purple")
     .addFields(
       { name: `__CW2 Wins__ <:cw2:1196604288886124585>`, value: `${cw2Wins}`, inline: true },
       { name: `__CC Wins__ <:classicWin:1196602845890355290>`, value: `${classicWins}`, inline: true },
       { name: `__GC Wins__ <:grandChallenge:1196602855482728560>`, value: `${grandWins}`, inline: true },
-      { name: `\t`, value: `\u200B<:outsideicon:1324707556026875914> [Ingame profile](<https://link.clashroyale.com/en/?playerInfo?id=${playertag}>)`, inline: false }
+      { name: `\t`, value: `\u200B<:outsideicon:1324707556026875914> [Ingame profile](<https://link.clashroyale.com/en/?playerInfo?id=${playertagTrimmed}>)`, inline: false }
 
     )
-    .setFooter({ text: `${userName}'s ${accountText}`, iconURL: userAvatarURL })
+    .setFooter({ text: `${userName}'s ${accountText} | ${playertag}`, iconURL: userAvatarURL })
     .setDescription(description);
 
-  // console.log(embedReturn);
   return embedReturn;
 }
 

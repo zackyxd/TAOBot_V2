@@ -78,7 +78,7 @@ const postNudges = async (client) => {
 
 
   // Testing TODO
-  // cron.schedule('*/5 * * * * *', () => {
+  // cron.schedule('*/10 * * * * *', () => {
   //   postAutoNudge(client, "normal"); // normal
   // }, {
   //   scheduled: true,
@@ -86,7 +86,7 @@ const postNudges = async (client) => {
   // });
 
   // Reset special data
-  cron.schedule(`15 3 * * *`, () => {
+  cron.schedule(`30 3 * * *`, () => {
     // cron.schedule('*/5 * * * * *', () => {
     resetSpecialData(client);
   }, {
@@ -188,6 +188,21 @@ async function postAutoNudge(client, nudgeType) {
 
       // If it gets down here, it means nudge setting exists.
       let channel = client.channels.cache.get(channelId);
+
+      const oldNudgeChannelId = clan?.nudgeMessage?.channelId;
+      const oldNudgeMessageId = clan?.nudgeMessage?.messageId;
+
+      let oldNudgeChannel;
+      let oldNudgeMessage;
+      if (oldNudgeChannelId && oldNudgeMessageId) {
+        try {
+          oldNudgeChannel = await client.channels.cache.get(oldNudgeChannelId);
+          oldNudgeMessage = await oldNudgeChannel.messages.fetch(oldNudgeMessageId);
+        } catch (error) { }
+      }
+
+
+      let newNudgeMessage;
       if (channel) {
         try {
           if (sendMessage.embed) { // send special message
@@ -198,12 +213,12 @@ async function postAutoNudge(client, nudgeType) {
             }
             else if (sendMessage.areAttacksRemaining) {
               console.log("No available attackers to finish attacks nudge");
-              await channel.send({ embeds: [sendMessage.embed] }) // sends if all attacks done
+              await channel.send({ embeds: [sendMessage.embed] }) // sends if still attacks left
             }
           }
           else {
-            console.log("Normal nudge");
-            await channel.send(sendMessage); // Send as normal nudge
+            console.log("Normal message for nudges, nothing special happened");
+            newNudgeMessage = await channel.send(sendMessage); // Send as normal nudge
           }
         } catch (error) {
           console.log("Invalid reply to autonudge", error);
@@ -214,6 +229,20 @@ async function postAutoNudge(client, nudgeType) {
           clan.nudgeSettings = { lastNudged: currentTime };
         } else {
           clan.nudgeSettings = { ...clan.nudgeSettings, lastNudged: currentTime };
+        }
+
+
+        if (oldNudgeMessage) {
+          try {
+            oldNudgeMessage.delete();
+          } catch (error) {
+            console.log(`Couldn't delete old nudge message...${error}`);
+          }
+        }
+        try {
+          clan.nudgeMessage = { 'channelId': newNudgeMessage.channelId, 'messageId': newNudgeMessage.id }
+        } catch (error) {
+          console.log("Sending special message that isn't autonudge, don't delete.")
         }
         await db.set(`clans.${clantag}`, clan);
       }
@@ -276,7 +305,6 @@ async function checkAttacks(db, members, raceData, client, guildId, channelId, l
 
   let periodIndex = raceData.periodIndex;
   let warDay = (periodIndex % 7) - 2;
-  // warDay = 2; // TODO
   for (const participant of raceData.clan.participants) {
     let member = await db.get(`playertags.${participant.tag}`);
     if (!member) {
@@ -310,6 +338,7 @@ async function checkAttacks(db, members, raceData, client, guildId, channelId, l
       member.playertag = participant.tag;
     }
     // member.currentDay = 2; // TODO
+
     // This shows the attacks used by the member
     // If they attacked elsewhere, it will be a different number than the API
     let attacksUsedToday = -999; // member.day#DecksUsed (for today)
@@ -329,7 +358,7 @@ async function checkAttacks(db, members, raceData, client, guildId, channelId, l
     }
 
     if (!membersIn[participant.tag]) { // member is not in clan
-      let updatedMember = memberAttacks(member, participant.decksUsedToday, attacksUsedToday);
+      let updatedMember = memberAttacks(member, participant.decksUsedToday, attacksUsedToday, false); // Maybe remove false
       if (updatedMember.hasPartials) {
         updatedMember.notInClan = true;
         outOfClanWithAttacks = true;
@@ -349,7 +378,7 @@ async function checkAttacks(db, members, raceData, client, guildId, channelId, l
       let updatedMember = memberAttacks(member, participant.decksUsedToday, attacksUsedToday, true)
       updatedMember.role = membersIn[participant.tag].role;
       // If member has attacks left to use in the clan
-      if (updatedMember.hasPartials >= 0) {
+      if (updatedMember.hasPartials && updatedMember.availableAttacks > 0) { // TODO, MAKE >= 0 if having issues
         membersHaveAttacks[attacksUsedToday].push(updatedMember);
       }
       // Member in clan, but used attacks in a different clan
@@ -389,7 +418,6 @@ async function checkAttacks(db, members, raceData, client, guildId, channelId, l
   }
 
   // Decks remaining but no one in clan to complete. If players in clan with not all attacks, inform
-
   if (decksRemaining !== 0 && areAllArraysEmpty(membersHaveAttacks)) {
     let playersNotAllAttacks = "";
     // Check if someone in the clan but doesn't have all attacks available
@@ -442,7 +470,7 @@ async function checkAttacks(db, members, raceData, client, guildId, channelId, l
       let discordData = await db.get(`users.${player.discordId}`).catch(() => null);
       let role = player.role;
       let attackString = "";
-      if (hour >= 21 || hour <= 2) {
+      if (hour >= 22 || hour <= 3) {
         attackString += await checkIfPing(role, player, discordData, true);
       }
       else {
@@ -519,13 +547,20 @@ async function checkAttacks(db, members, raceData, client, guildId, channelId, l
 }
 
 async function checkIfCanViewChannel(client, discordId, guildId, channelId) {
-  const guild = client.guilds.cache.get(guildId);
-  const channel = await client.channels.fetch(channelId);
-  const member = await guild.members.fetch(discordId);
-  if (channel && member && channel.permissionsFor(member).has(PermissionsBitField.Flags.ViewChannel)) {
-    return true;
+
+  try {
+    const guild = client.guilds.cache.get(guildId);
+    const channel = await client.channels.fetch(channelId);
+    const member = await guild.members.fetch(discordId);
+    if (channel && member && channel.permissionsFor(member).has(PermissionsBitField.Flags.ViewChannel)) {
+      return true;
+    }
+    return false;
+
+  } catch (error) {
+    console.log(`Cannot find user to ping for ${discordId}`);
+    return false;
   }
-  return false;
 }
 
 /* 
@@ -540,84 +575,124 @@ playerData: {
 */
 async function checkIfPing(role, playerData, discordData, all) {
   let emojis = [];
-
   if (all) { // all ping for attacking lates
-    if (playerData && playerData.notInClan) {
+    // Not in clan and no discord data
+    if (playerData && isNotInClan(playerData) && !discordData) {
       emojis.push('❌');
-      return pingPlayer(playerData, !!discordData, true, emojis);
+      return pingPlayer(playerData, false, false, emojis);
+    }
+    else if (playerData && isNotInClan(playerData) && discordData) {
+      emojis.push('❌');
+      return pingPlayer(playerData, true, true, emojis)
+    }
+
+    if (!discordData && !isColeader(playerData)) {
+      return pingPlayer(playerData, false, false, emojis);
+    }
+    else if (!discordData && isColeader(playerData)) {
+      return pingPlayer(playerData, true, false, emojis);
     }
 
     if (discordData) {
-      if (discordData['replace-me'] === true && (playerData.role !== 'coLeader' || playerData.role !== 'leader')) {
+      if (isReplaceMe(discordData)) {
         emojis.push('⚠️');
         return pingPlayer(playerData, true, false, emojis);
       }
 
-      // if  pingCo is true, ping them
-      if (discordData?.pingCo === true) {
+      if (isColeader(playerData)) {
+        return pingPlayer(playerData, true, false, emojis);
+      }
+
+
+      // if pingCo is true, ping them
+      if (!isNeverPing(discordData)) {
         return pingPlayer(playerData, true, true, emojis);
       }
-      else if (discordData?.pingCo === false || ((playerData.role === 'coLeader' || playerData.role === 'leader'))) {
-        if (discordData?.pingCo === false) {
-          emojis.push('👴')
-        }
+      else if (isNeverPing(discordData)) {
+        emojis.push('👴');
         return pingPlayer(playerData, true, false, emojis);
       }
       else {
         return pingPlayer(playerData, true, true, emojis);
       }
     }
+    else {
+      emojis.push('⁉️');
+      return pingPlayer(playerData, false, false, emojis)
+    }
   }
 
-  if (!discordData && playerData.notInClan) {
+  // If no discord data and out of clan, can't ping, show they are out of clan.
+  if (!discordData && isNotInClan(playerData)) {
     emojis.push('❌');
     return pingPlayer(playerData, false, false, emojis);
   }
+  // If no discord data and is in clan, show as not linked unless coleader
+  else if (!discordData && !isNotInClan(playerData)) {
+    if (isColeader(playerData)) {
+      return pingPlayer(playerData, true, false, emojis);
+    }
+    return pingPlayer(playerData, false, false, emojis);
+  }
 
-  if (discordData && playerData.notInClan) {
+  // Never ping these players
+  if (isNeverPing(discordData)) {
+    emojis.push('👴');
+    // Still check if out of clan
+    if (isNotInClan(playerData)) {
+      emojis.push('❌');
+    }
+    return pingPlayer(playerData, true, false, emojis);
+  }
+
+  // If discord data and is not in clan, and didn't ask to get replaced and isnt l2w clan
+  if (discordData && isNotInClan(playerData) && !l2w && !isReplaceMe(discordData)) {
     emojis.push('❌');
     return pingPlayer(playerData, true, true, emojis);
   }
+  // If discord data, not in clan, and asked to be replaced,
+  else if (discordData && isNotInClan(playerData) && isReplaceMe(discordData) && !l2w) {
+    emojis.push('❌');
+    return pingPlayer(playerData, true, true, emojis);
+  }
+  // If discord data and is not in clan, but is l2w clan, do not ping because it's whatever
+  else if (discordData && isNotInClan(playerData) && l2w) {
+    emojis.push('❌');
+    return pingPlayer(playerData, true, false, emojis);
+  }
 
   if (!discordData) { // no discord account linked
-    if (role === 'coLeader' || role === 'leader') {
+    if (isColeader(playerData)) {
       return `* **${playerData.playerName}**`; // don't ping co-leaders/leaders
     }
     return pingPlayer(playerData, false, false, emojis);
   }
 
-  // if (discordData && (role === 'coLeader' || role === 'leader')) {
-  if (discordData) {
-    if (discordData?.pingCo === true) { // Don't ping if false
-      return pingPlayer(playerData, true, true, emojis);
-    }
-    else if (discordData?.pingCo === false || ((playerData.role === 'coLeader' || playerData.role === 'leader'))) {
-      if (discordData?.pingCo === false) {
-        emojis.push('👴')
-      }
-      return pingPlayer(playerData, true, false, emojis);
-    }
-    else {
-      return pingPlayer(playerData, true, true, emojis)
-    }
-    return `* **${playerData.playerName}** ❓`; // don't ping co-leaders/leaders
-  }
-
-  if (discordData['replace-me'] === true) {
+  // If replace me, don't ping
+  if (isReplaceMe(discordData)) {
     emojis.push('⚠️');
     return pingPlayer(playerData, true, false, emojis);
   }
 
-  if (discordData && playerData.notInClan) {
+  // If discord data and not in clan, ping and show out of clan
+  if (discordData && isNotInClan(playerData)) {
     emojis.push('❌');
     return pingPlayer(playerData, true, true, emojis);
   }
 
-  if (discordData['attacking-late'] === true) {
-    emojis.push('✅');
+  // Check if attacking late
+  if (isAttackingLate(discordData)) {
+    let emoji = isAttackingLateEmoji(discordData);
+    emojis.push(emoji);
+    return pingPlayer(playerData, true, false, emojis);
   }
 
-  return pingPlayer(playerData, true, true, emojis);
+  if (discordData) {
+    return pingPlayer(playerData, true, true, emojis);
+  }
+  else {
+    return `* **${playerData.playerName}** ❓`;
+  }
 }
 
 function pingPlayer(playerData, linked, ping, emojis = []) {
@@ -633,7 +708,48 @@ function pingPlayer(playerData, linked, ping, emojis = []) {
   return `* <@${playerData.discordId}> (${playerData.playerName}) ${emojiString}`;
 }
 
+function isNotInClan(playerData) {
+  if (playerData.notInClan) {
+    return true;
+  }
+  return false;
+}
 
+function isNeverPing(discordData) {
+  if (discordData?.pingCo === false) {
+    return true;
+  }
+  return false;
+}
+
+function isAttackingLate(discordData) {
+  if (discordData['attacking-late'] === true || discordData['permanent-attacking-late'] === true) {
+    return true;
+  }
+  return false;
+}
+
+function isAttackingLateEmoji(discordData) {
+  if (discordData['permanent-attacking-late'] === true) {
+    return '✅✅';
+  }
+  return '✅';
+}
+
+function isReplaceMe(discordData) {
+  if (discordData['replace-me'] === true) {
+    return true;
+  }
+  return false;
+}
+
+// If pingCo = true, ping anyway
+function isColeader(playerData) {
+  if (playerData.role === 'coLeader' || playerData.role === 'leader') {
+    return true;
+  }
+  return false;
+}
 
 
 
@@ -646,12 +762,13 @@ function memberAttacks(memberData, clanAttacks, overallAttacks, inClan) {
     3. availableClanAttacks - availablePlayerAttacks = negative, 3 - 4, shouldnt be possible, data error
     4. If availableClanAttacks - availablePlayerAttacks = 0, players--, dont show, means all attacks done
   */
+  // console.log(memberData, clanAttacks, overallAttacks, inClan);
   let availableClanAttacks = 4 - clanAttacks; // TOTAL ATTACKS THE PLAYER CAN USE IN CLAN
   let availablePlayerAttacks = 4 - overallAttacks; // TOTAL ATTACKS THE PLAYER HAS REMAINING
   let attacks = availableClanAttacks - availablePlayerAttacks; // Attacks a person can do in clan
-  memberData.availableAttacks = 4 - overallAttacks;
+  memberData.availableAttacks = 4 - overallAttacks || 0;
 
-  // console.log(memberData, availableClanAttacks, availablePlayerAttacks, attacks);
+  // console.log(availableClanAttacks, availablePlayerAttacks, attacks);
   if (availablePlayerAttacks === 0 && availableClanAttacks === 4) { // did all 4 attacks in different clan(s)
     memberData.completedInDiffClan = true;
     return memberData;

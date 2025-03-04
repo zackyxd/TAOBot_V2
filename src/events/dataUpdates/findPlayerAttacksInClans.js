@@ -32,7 +32,7 @@ const cron = require('node-cron');
 
 const findPlayerAttacks = async (client) => {
   // await findAttacks(client);
-  cron.schedule('0 */4 * * * 4,5,6,7', async function () {
+  cron.schedule('0 */3 * * * 4,5,6,7', async function () {
     findAttacks(client);
   }, {
     scheduled: true,
@@ -59,10 +59,10 @@ async function findAttacks(client) {
     if (!clans) return;
 
     const playerAttacksMap = new Map();
+    const startClantagTimes = Date.now();
     const clantagTasks = Object.keys(clans).map(async clantag => {
       if (!clans[clantag]['family-clan']) return;
 
-      const startClantagTime = Date.now();
       let raceData = await API.getCurrentRiverRace(clantag);
       if (!raceData || raceData.data) return;
 
@@ -79,14 +79,13 @@ async function findAttacks(client) {
         await Promise.all(participantTasks);
       }
 
-      console.log(`Finished processing attacks for: ${clantag} in ${Date.now() - startClantagTime}ms`);
       raceData = null; // Clear large object from memory
     });
 
     await Promise.all(clantagTasks);
     await savePlayerAttacks(db, playerAttacksMap);
     playerAttacksMap.clear(); // Clear map from memory
-    console.log(`Finished setting everyone's attacks for all clans in guild ${guild.id}`);
+    console.log(`Finished setting everyone's attacks for all clans in guild ${guild.id} in ${Date.now() - startClantagTimes}ms`);
   });
 
   await Promise.all(guildTasks);

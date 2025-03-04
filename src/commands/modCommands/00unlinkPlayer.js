@@ -51,7 +51,6 @@ module.exports = {
       }
       let discordId = playerData.discordId;
       // Remove the discordId from the player data
-      console.log(playerData);
       delete playerData.discordId;
       console.log(playerData);
       // Update the player data in the database
@@ -69,7 +68,7 @@ module.exports = {
 
     } catch (error) {
       console.error('Error unlinking playertag:', error);
-      await interaction.editReply({ embeds: [createErrorEmbed('An error occurred while linking the playertag. Please try again later.')] });
+      await interaction.editReply({ embeds: [createErrorEmbed('An error occurred while unlinking the playertag. Please try again later.')] });
       return;
     }
   }
