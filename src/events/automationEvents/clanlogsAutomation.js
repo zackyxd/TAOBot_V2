@@ -9,18 +9,19 @@ const { createSuccessEmbed, createExistEmbed, createErrorEmbed, createMaintenanc
 
 
 const checkClanChanges = async (client) => {
-  console.log("Going through clan logs");
+  console.log("Going through clan logs...");
   client.guilds.cache.forEach(async (guild) => {
     const dbPath = API.findFileUpwards(__dirname, `guildData/${guild.id}.sqlite`);
     const db = new QuickDB({ filePath: dbPath, timeout: 5000 });
     const clans = await db.get(`clans`);
+    const globalRole = await db.get(`guilds.${guild.id}.globalRole`);
     if (!clans) return;
     for (const clantag in clans) {
       let currentData = await API.getClan(clantag);
       let channelId = await db.get(`clans.${clantag}.clanlogsChannel`);
       const channel = guild.channels.cache.get(channelId);
       if (channel) {
-        let { veryNewData, changes } = await checkForChanges(guild.id, clantag, currentData);
+        let { veryNewData, changes } = await checkForChanges(guild.id, clantag, currentData, globalRole);
         if (veryNewData) {
           await channel.send({ embeds: [veryNewData] });
         }
@@ -30,16 +31,16 @@ const checkClanChanges = async (client) => {
           }
         }
       } else {
-        console.log("no channel exist to send embeds for", clantag);
+        // console.log("no channel exist to send embeds for", clantag);
       }
     }
 
 
   });
-  console.log("Finished clan logs");
+  console.log("Finished clan logs.");
 }
 
-async function checkForChanges(guild, clantag, currentData) {
+async function checkForChanges(guild, clantag, currentData, globalRole) {
 
   const dbPath = API.findFileUpwards(__dirname, `guildData/${guild}.sqlite`);
   const db = new QuickDB({ filePath: dbPath, timeout: 5000 });
@@ -57,7 +58,7 @@ async function checkForChanges(guild, clantag, currentData) {
   }
 
   const changes = await Promise.all([
-    processMemberJoinLeave(db, previousData, currentData, clantag),
+    processMemberJoinLeave(db, previousData, currentData, clantag, guild, globalRole),
     processMemberPromoDemo(db, previousData, currentData, clantag),
     processWarTrophyChange(previousData, currentData, clantag),
     processClanType(previousData, currentData, clantag)
@@ -99,7 +100,12 @@ async function checkForChanges(guild, clantag, currentData) {
 
 
 
-async function processMemberJoinLeave(db, previousData, currentData, clantag) {
+async function processMemberJoinLeave(db, previousData, currentData, clantag, guildId, globalRole) {
+  let discordClanData = await db.get(`clans.${clantag}`);
+  let clanRole;
+  if (discordClanData && discordClanData.roleId) {
+    clanRole = discordClanData.roleId;
+  }
   let changes = [];
   const previousMembers = previousData.memberList.map(member => member.tag);
   const currentMembers = currentData.memberList.map(member => member.tag);
@@ -107,36 +113,54 @@ async function processMemberJoinLeave(db, previousData, currentData, clantag) {
   const membersLeft = previousMembers.filter(tag => !currentMembers.includes(tag));
 
   const processMembers = async (tags, action) => {
-    const promises = tags.map(async tag => {
-      const discordId = await db.get(`playertags.${tag}`);
-      const member = action === 'join' ? currentData.memberList.find(member => member.tag === tag)
-        : previousData.memberList.find(member => member.tag === tag);
+    const promises = tags.map(async playertag => {
+      const playertagData = await db.get(`playertags.${playertag}`);
+      const discordId = playertagData?.discordId;
+      const member = action === 'join' ? currentData.memberList.find(member => member.tag === playertag)
+        : previousData.memberList.find(member => member.tag === playertag);
       let description, color;
-      tag = (member.tag).substring(1);
-      clantag = (clantag).substring(1);
+      let normalizedPlayertag = (member.tag).substring(1);
+      let normalizedClantag = (clantag).substring(1);
       let role = getRoleDisplayName(member.role);
       let arenaName = (member.arena.name || "0_").replace(/[!'.,]/g, '').toLowerCase().replace(/\s+/g, '');
       let arenaIconId = await findEmojiId(arenaName);
       let badgeIdIcon = await getLink(currentData.badgeId + ".png");
       description = `**${role} ${action}!**\n`;
-      description += `<:${arenaName}:${arenaIconId}>\`${member.trophies}\` [${member.name}](<https://royaleapi.com/player/${tag}>)`;
+      description += `<:${arenaName}:${arenaIconId}>\`${member.trophies}\` [${member.name}](<https://royaleapi.com/player/${playertag}>)`;
       color = action === 'join' ? 0x00FF00 : 0xFF0000; // Green for join, Red for leave
 
       try {
-        const user = await client.users.fetch(discordId);
+        const guild = client.guilds.cache.get(guildId);
+        const guildMember = await guild.members.fetch(discordId);
         const embed = new EmbedBuilder()
-          .setAuthor({ name: `${currentData.name} (${currentData.members}/50)`, iconURL: badgeIdIcon, url: `https://royaleapi.com/clan/${clantag}/` })
+          .setAuthor({ name: `${currentData.name} (${currentData.members}/50)`, iconURL: badgeIdIcon, url: `https://royaleapi.com/clan/${normalizedClantag}/` })
           .setColor(color)
           .setDescription(description)
-          .setFooter({ text: user.username, iconURL: user.displayAvatarURL() })
+          .setFooter({ text: guildMember.user.username, iconURL: guildMember.user.displayAvatarURL() })
           .setTimestamp();
+
+        // Additional actions for join or leave
+        if (action === 'join') {
+          await handleMemberJoin(db, guildMember, clantag, playertag, clanRole, globalRole, member.name);
+        }
+        else if (action === 'left') {
+          await handleMemberLeave(db, clantag, playertag);
+        }
+
         return embed;
       } catch (error) {
+        if (action === 'join') {
+          await handleMemberJoin(db, null, clantag, playertag, clanRole, globalRole, member.name);
+        }
+        else if (action === 'left') {
+          await handleMemberLeave(db, clantag, playertag);
+        }
         const embed = new EmbedBuilder()
-          .setAuthor({ name: `${currentData.name} (${currentData.members}/50)`, iconURL: badgeIdIcon, url: `https://royaleapi.com/clan/${clantag}/` })
+          .setAuthor({ name: `${currentData.name} (${currentData.members}/50)`, iconURL: badgeIdIcon, url: `https://royaleapi.com/clan/${normalizedClantag}/` })
           .setColor(color)
           .setDescription(description)
           .setTimestamp();
+
         return embed;
       }
     });
@@ -150,6 +174,56 @@ async function processMemberJoinLeave(db, previousData, currentData, clantag) {
   return changes;
 }
 
+// When member joins, give them role. 
+async function handleMemberJoin(db, guildMember, clantag, playertag, clanRole, globalRole, memberName) {
+  if (guildMember && guildMember.roles.cache.has(globalRole)) {
+    try {
+      await guildMember.roles.add(clanRole)
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  // Else if member is not guild member or doesn't have the global role, add them to database with their tag to retry later.
+  else {
+    try {
+      let membersJoined = await db.get(`membersJoined.${clantag}`) || [];
+
+      if (!membersJoined.some(member => member.playertag === playertag)) {
+        membersJoined.push({ playertag: playertag, name: memberName });
+      }
+
+      await db.set(`membersJoined.${clantag}`, membersJoined);
+      console.log(`Unknown member ${playertag} joined ${clantag}, added to database to retry later.`);
+
+    } catch (error) {
+      console.log(`Clan log error to handle member ${clantag} joining`, error);
+    }
+  }
+
+}
+
+// Remove members when they leave the clan so it stops checking for them. 
+async function handleMemberLeave(db, clantag, playertag) {
+  try {
+    let membersJoined = await db.get('membersJoined.${clantag}');
+    if (!membersJoined) return;
+
+    // Remove playertag from array
+    membersJoined = membersJoined.filter(member => member.playertag !== playertag);
+
+    if (membersJoined.length === 0) {
+      await db.delete(`membersJoined.${clantag}`);
+      console.log(`No more members in database for ${clantag} in clan logs.`);
+    }
+    else {
+      await db.set(`membersJoined.${clantag}`, membersJoined);
+      console.log(`Member ${playertag} left ${clantag}, removed from database.`);
+    }
+  } catch (error) {
+    console.log(error);
+  }
+}
 
 async function processMemberPromoDemo(db, previousData, currentData, clantag) {
   let changes = [];

@@ -8,14 +8,14 @@ const fs = require('fs');
 const { checkClanChanges } = require('./automationEvents/clanlogsAutomation');
 // const { checkAttacks } = require('./automationEvents/attacksAutomation');
 // const { checkRace } = require('./automationEvents/scoresAutomation');
-const { updateClanInvites } = require('./automationEvents/createInviteLinkAutomation');
+const { updateClanInvites } = require('./automationEvents/postClanLinksAutomation.js');
 // const { postNudges } = require('./automationEvents/nudgesAutomation');
 const { postNudges } = require('./automationEvents/warNudges');
 const { findPlayerAttacks } = require('./dataUpdates/findPlayerAttacksInClans.js');
 const { checkRace } = require('./automationEvents/endOfWarDayStats.js');
 const { updateMemberClanRoles } = require('../utilities/checkIfHaveRole.js');
 const { removeMemberClanRoles } = require('../utilities/roleRemoval.js');
-
+const { verifyClanlogs } = require('./automationEvents/verifyClanlogs.js');
 // const { post20WinsEmbeds } = require('./20winchallenge/UpdateMatches');
 
 module.exports = {
@@ -44,8 +44,6 @@ module.exports = {
     // resetPlayerData(client);
     cron.schedule('0 2 * * 4', async function () {
       // cron.schedule('*/5 * * * * *', async function () {
-      // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
-      // Your code here
       resetPlayerData(client);
     }, {
       scheduled: true,
@@ -54,8 +52,6 @@ module.exports = {
 
     cron.schedule('35 2 * * *', async function () {
       // cron.schedule('*/5 * * * * *', async function () {
-      // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
-      // Your code here
       resetPings(client);
     }, {
       scheduled: true,
@@ -84,9 +80,14 @@ module.exports = {
 
     setInterval(async () => {
       await checkClanChanges(client);
+      // }, 10000);
     }, 180000);
 
     findPlayerAttacks(client);
+
+    setInterval(async () => {
+      await verifyClanlogs(client);
+    }, 600000);
 
     // await updateMemberClanRoles(client);
     // setInterval(async () => {
