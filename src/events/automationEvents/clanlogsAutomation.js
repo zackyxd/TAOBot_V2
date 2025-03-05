@@ -126,7 +126,7 @@ async function processMemberJoinLeave(db, previousData, currentData, clantag, gu
       let arenaIconId = await findEmojiId(arenaName);
       let badgeIdIcon = await getLink(currentData.badgeId + ".png");
       description = `**${role} ${action}!**\n`;
-      description += `<:${arenaName}:${arenaIconId}>\`${member.trophies}\` [${member.name}](<https://royaleapi.com/player/${playertag}>)`;
+      description += `<:${arenaName}:${arenaIconId}>\`${member.trophies}\` [${member.name}](<https://royaleapi.com/player/${normalizedPlayertag}>)`;
       color = action === 'join' ? 0x00FF00 : 0xFF0000; // Green for join, Red for leave
 
       try {
