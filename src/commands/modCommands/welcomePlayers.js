@@ -21,7 +21,7 @@ module.exports = {
   async execute(interaction) {
     if (!interaction.isChatInputCommand()) return;
     if (interaction.commandName !== "welcome") return;
-    await interaction.deferReply();
+    await interaction.deferReply({ ephemeral: true });
     let member = interaction.options.getMember("user"); // gets full user
     let abbrev = interaction.options.get("abbreviation").value.toLowerCase();
     const dbPath = API.findFileUpwards(__dirname, `guildData/${interaction.guild.id}.sqlite`);
@@ -64,17 +64,19 @@ module.exports = {
     let roleIds = [];
     roleIds.push(globalRole);
     roleIds.push(clanRole);
+    let startTimer = performance.now();
     let giveRoles = await assignRoles(interaction, member, roleIds, globalRole, clanRole);
     if (!giveRoles) {
       await interaction.editReply("Issue giving roles...Contact Zacky");
       return;
     }
-
-
+    let endTimer = performance.now();
+    let totalTime = ((endTimer - startTimer) / 1000).toFixed(2);
     await interaction.editReply(`Roles given and message sending in 5 seconds!`);
-    await interaction.channel.send({
-      embeds: [createSuccessEmbed(`The user <@${member.user.id}> should now have <@&${globalRole}> and <@&${clanRole}> roles.\nSending the welcome message to: ${channelToSend}`)],
-    });
+    let embed = new EmbedBuilder()
+      .setDescription(`**The user <@${member.user.id}> should now have <@&${globalRole}> and <@&${clanRole}> roles.\nSending the welcome message to: ${channelToSend}**\n-# Took ${totalTime} seconds`)
+      .setColor("#00FF00")
+    await interaction.channel.send({ embeds: [embed] });
     await sleep(5000);
 
 

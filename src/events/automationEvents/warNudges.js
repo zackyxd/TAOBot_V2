@@ -79,7 +79,7 @@ const postNudges = async (client) => {
 
   // Testing TODO
   // cron.schedule('*/10 * * * * *', () => {
-  //   postAutoNudge(client, "normal"); // normal
+  //   postAutoNudge(client, "l2w"); // normal
   // }, {
   //   scheduled: true,
   //   timezone: "America/Phoenix"
@@ -652,6 +652,7 @@ async function checkIfPing(role, playerData, discordData, all) {
   }
   // If discord data, not in clan, and asked to be replaced,
   else if (discordData && isNotInClan(playerData) && isReplaceMe(discordData) && !l2w) {
+    emojis.push('⚠️')
     emojis.push('❌');
     return pingPlayer(playerData, true, true, emojis);
   }
@@ -687,7 +688,10 @@ async function checkIfPing(role, playerData, discordData, all) {
     return pingPlayer(playerData, true, false, emojis);
   }
 
-  if (discordData) {
+  if (discordData && isColeader(playerData)) {
+    return pingPlayer(playerData, true, false, emojis);
+  }
+  else if (discordData && !isColeader(playerData)) {
     return pingPlayer(playerData, true, true, emojis);
   }
   else {

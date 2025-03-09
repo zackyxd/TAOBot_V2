@@ -36,6 +36,7 @@ module.exports = {
     const dbPath = path.join(__dirname, `../../../guildData/${interaction.guild.id}.sqlite`);
     const db = new QuickDB({ filePath: dbPath });
     let stats = await grabStatsData(db, user.user.id, warType);
+    console.log(stats);
     if (stats.notLinked === true) {
       await interaction.editReply({ embeds: [createErrorEmbed(`${user} has no accounts linked.`)] });
       return;
@@ -90,7 +91,7 @@ module.exports = {
     try {
       await interaction.editReply({ embeds: [summaryEmbed], components: [buttonRow] })
     } catch (error) {
-      console.log("Faild to edit reply because command was deleted for /average");
+      console.log("Failed to edit reply because command was deleted for /average");
     }
 
 
@@ -160,7 +161,7 @@ async function readSheet(group) {
     });
 
     const response = await sheets.spreadsheets.values.get({
-      auth, spreadsheetId, range: `'${group} Averages'!A1:ZZ1000`
+      auth, spreadsheetId, range: `'${group} Averages'!A1:ZZ1500`
     });
     rows = response?.data?.values;
   } catch (error) {
@@ -179,6 +180,7 @@ function findPlayertagData(rows, playertag) {
   const headerRow = rows[0];
   let playerData;
   for (const [index, row] of rows.entries()) {
+    console.log(row[0]);
     if (row.includes(playertag)) {
       playerData = { row, headerRow, rowIndex: index };
       return outputPlayerData(playerData);
