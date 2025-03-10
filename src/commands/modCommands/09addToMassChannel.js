@@ -193,7 +193,7 @@ module.exports = {
       .reduce((sum, entry) => sum + entry.names.length, 0);
 
     // Build the confirmation string.
-    let addedPlayersMessage = `**Added to this channel:**\n`
+    let addedPlayersMessage = `**These are the accounts added:**\n`
     let confirmationMessage = Object.values(groupedAccounts)
       .map(entry => `<@${entry.user.id}>: ${entry.names.join(', ')}`)
       .join('\n');
