@@ -10,7 +10,7 @@ const { createSuccessEmbed, createExistEmbed, createErrorEmbed, createMaintenanc
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("createchannel")
-    .setDescription("What is the channel you want for this clan's log?")
+    .setDescription("Create a channel to help move members to different clan(s).")
     .addStringOption(option =>
       option.setName("players")
         .setDescription("Please @ all the players in here to add to the channel.")
@@ -18,7 +18,7 @@ module.exports = {
     )
     .addStringOption(option =>
       option.setName("describe")
-        .setDescription("Please write one word or abbreviation for this channel. 10 character max.")
+        .setDescription("Please write max 3 words for this channel. 20 characters max.")
         .setRequired(true)
     )
     .addRoleOption(option =>
@@ -36,8 +36,8 @@ module.exports = {
     let describe = interaction.options.getString("describe");
     let role = interaction.options.getRole("role-to-give") || null;
     // console.log(role)
-    if (describe.split(' ').length !== 1 || describe.length > 10) {
-      await interaction.editReply({ embeds: [createErrorEmbed("Please make sure the `describe` option is a single word under 11 characters.")] });
+    if (describe.split(' ').length > 3 || describe.length > 20) {
+      await interaction.editReply({ embeds: [createErrorEmbed("Please make sure the `describe` option is max 3 words and 20 characters.")] });
       return;
     }
     const regex = /<@\d+>/g;
@@ -61,47 +61,97 @@ module.exports = {
     count++;
     await db.set(`massLinkChannels.count`, count);
 
+
+
+
     let wantedAccounts = []; // all the playertags linked
-    let usersWithPlayertags = []; // All the users with a ral account
-    for (let user of matches.values()) {
-      user = user.substring(2, user.length - 1); // user normally looks like <@2342423424>
-      let findLinkedAccounts = await db.get(`users.${user}`);
+    let multiPlayertagsData = []; // all the playertags linked
+    let usersWithPlayertags = []; // All the users with a real account
+
+    for (let rawUser of matches) {
+      console.log(rawUser);
+      // Convert user string <@222222> to just id
+      let userId = rawUser.substring(2, rawUser.length - 1);
+      let findLinkedAccounts = await db.get(`users.${userId}`);
       let playertags = findLinkedAccounts?.playertags;
-      if (!playertags) {
-        try {
-          await interaction.editReply({ embeds: [] })
-          let result = await handleNoPlayertags(interaction, user);
-          if (result === 'continue') {
-            continue; // Skip user
-          }
-        } catch (error) {
-          await interaction.editReply({ content: '', embeds: [createExistEmbed(`Command stopped, please rerun if needed.`)], components: [] })
-          return; // command stopped
-        }
-      }
 
-      if (playertags.length > 1) {
-        let selectedTags = await handleMultiplePlayertags(interaction, user, playertags);
-        if (selectedTags === 'stop') {
-          await interaction.editReply({ content: '', embeds: [createExistEmbed(`Command stopped, please rerun if needed.`)], components: [] })
-          return;
-        }
-        else {
-          wantedAccounts = [...wantedAccounts, ...selectedTags];
-        }
+      if (playertags && playertags.length > 1) {
+        let userObj = await guild.members.fetch(userId);
+        multiPlayertagsData.push({ user: userObj, playertags });
       }
-      else if (playertags.length === 1) {
-        wantedAccounts = [...wantedAccounts, ...playertags];
+      else if (playertags && playertags.length === 1) {
+        let userObj = await guild.members.fetch(userId);
+        wantedAccounts.push({ user: userObj, playertag: playertags[0] });
       }
-
-      usersWithPlayertags.push(user);
+      usersWithPlayertags.push(userId);
     }
+    // for (let user of matches.values()) {
+    //   user = user.substring(2, user.length - 1); // user normally looks like <@2342423424>
+    //   let findLinkedAccounts = await db.get(`users.${user}`);
+    //   let playertags = findLinkedAccounts?.playertags;
+    //   if (!playertags) {
+    //     try {
+    //       await interaction.editReply({ embeds: [] })
+    //       let result = await handleNoPlayertags(interaction, user);
+    //       if (result === 'continue') {
+    //         continue; // Skip user
+    //       }
+    //     } catch (error) {
+    //       await interaction.editReply({ content: '', embeds: [createExistEmbed(`Command stopped, please rerun if needed.`)], components: [] })
+    //       return; // command stopped
+    //     }
+    //   }
 
-    if (usersWithPlayertags.length === 0 || wantedAccounts.length === 0) {
+    //   if (playertags.length > 1) {
+    //     let selectedTags = await handleMultiplePlayertags(interaction, user, playertags);
+    //     if (selectedTags === 'stop') {
+    //       await interaction.editReply({ content: '', embeds: [createExistEmbed(`Command stopped, please rerun if needed.`)], components: [] })
+    //       return;
+    //     }
+    //     else {
+    //       wantedAccounts = [...wantedAccounts, ...selectedTags];
+    //     }
+    //   }
+    //   else if (playertags.length === 1) {
+    //     wantedAccounts = [...wantedAccounts, ...playertags];
+    //   }
+
+    //   usersWithPlayertags.push(user);
+    // }
+
+    if (usersWithPlayertags.length === 0) {
       await interaction.editReply({ embeds: [createErrorEmbed(`There were no members selected to create the channel.`)], components: [] });
       return;
     }
 
+    let selectedTags = [];
+    if (multiPlayertagsData.length > 0) {
+      try {
+        selectedTags = await handleMultiplePlayertags(interaction, multiPlayertagsData);
+      } catch (error) {
+        await interaction.followUp({ content: '', embeds: [createExistEmbed(`Timed out of invalid. ${error}`)], components: [] })
+        return;
+      }
+
+      if (selectedTags === 'stop') {
+        await interaction.editReply({ content: '', embeds: [createExistEmbed(`Command stopped, please rerun if needed.`)], components: [] })
+        return;
+      }
+      else if (selectedTags.length === 0) {
+        await interaction.editReply({ embeds: [createErrorEmbed(`There were no members selected to create the channel.`)], components: [] });
+        return;
+      }
+      wantedAccounts = [...wantedAccounts, ...selectedTags];
+    }
+
+    // Build mapping from each user id to an array of playertags, so that DB only saves tags.
+    let accountMappingForDB = {};
+    for (const account of wantedAccounts) {
+      const uid = account.user.id;
+      if (!accountMappingForDB[uid]) accountMappingForDB[uid] = [];
+      accountMappingForDB[uid].push(account.playertag);
+    }
+    let flatTagsForDB = Object.values(accountMappingForDB).flat
 
 
     const channel = await guild.channels.create({
@@ -112,20 +162,29 @@ module.exports = {
       permissionOverwrites: null, // Inherit permissions from the category
     });
 
+    await db.set(`massLinkChannels.${channel.id}`, {
+      "channelId": channel.id,
+      "users": [],
+      // Map each account object to only its playertag property.
+      "playersAdded": wantedAccounts.map(account => account.playertag),
+      "roleId": role ? role.id : undefined
+    });
+
+
+
     let waitMessage = await channel.send('# Please don\'t send any messages until it shows all players have been added');
 
 
     // Add specific permission overwrites for mentioned users
     for (let userId of usersWithPlayertags) {
-      console.log(userId);
       await channel.permissionOverwrites.create(userId, {
         ViewChannel: true,
         SendMessages: true,
       });
     }
 
+
     // Confirm everyone has access to channel before continuing. 
-    await interaction.guild.members.fetch();
     let allUsersHaveAccess;
     let allUsersHaveRole;
     do {
@@ -162,21 +221,14 @@ module.exports = {
 
     const mentions = matches.map(user => `${user}`).join(' ');
     let message = await channel.send(`Attention: ${mentions}\nCreated by <@${interaction.user.id}>`);
-    let messageId = message.id;
-    const attachment = new AttachmentBuilder((API.findFileUpwards(__dirname, "movinggif.gif")));
+    const attachment = new AttachmentBuilder((API.findFileUpwards(__dirname, "today-we-cook.gif")));
     await channel.send({ files: [attachment] });
     let embed = new EmbedBuilder()
       .setColor("Purple")
       .setDescription(`Please stand by as we prepare movements. Invite links will be provided below 👇
 `);
     await channel.send({ embeds: [embed] })
-    await db.set(`massLinkChannels.${channel.id}`, {
-      "channelId": channel.id,
-      "users": [],
-      "playersAdded": wantedAccounts,
-      "originalMessage": messageId,
-      "roleId": role ? role.id : undefined
-    });
+
 
     // Delete the waiting message
     try {
@@ -184,7 +236,7 @@ module.exports = {
       let grabMembersEmbed = await getAddedMembersDescription(db, channel);
       await channel.send({ embeds: [grabMembersEmbed] })
     } catch (error) {
-      console.log("Issue with: members - ", count);
+      console.log("Issue with: members - #", count);
       console.log(error);
     }
 
@@ -200,26 +252,42 @@ module.exports = {
 
 }
 
-async function handleMultiplePlayertags(interaction, user, playertags) {
+async function handleMultiplePlayertags(interaction, multiUsersData) {
   // console.log(interaction, user, playertags);
   const row = createButtonRow();
+  let description = "";
+  // Global mapping
+  const mapping = {};
+  const groupMapping = {};
+  let currentOption = 1;
 
-  let playersData = await Promise.all(playertags.map(grabPlayerName));
 
-  playersData.sort((a, b) => {
-    if (a.level !== b.level) {
-      return b.level - a.level;
-    }
-    return a.name.localeCompare(b.name);
-  })
+  for (const { user, playertags } of multiUsersData) {
+    let playersData = await Promise.all(playertags.map(grabPlayerName)); // Get api of all 
+    // Sort by level, then name
+    playersData.sort((a, b) => {
+      if (a.level !== b.level) {
+        return b.level - a.level;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    description += `<@${user.id}>\n`;
+    groupMapping[user.id] = [];
+    playersData.forEach(pt => {
+      const emoji = pt.levelId ? `<:experience${pt.expLevel}:${pt.levelId}>` : '';
+      mapping[currentOption] = { user, playertag: pt.playertag, pt };
+      groupMapping[user.id].push(currentOption);
+      description += `${currentOption}. [${pt.name}](<https://royaleapi.com/player/${(pt.playertag).substring(1)}>) (${pt.playertag}) ${emoji}\n`;
+      currentOption++;
+    });
+    description += '\n';
+  }
 
   let embed = new EmbedBuilder()
-    .setDescription(`### Choosing playertag(s) for <@${user}>\n` + playersData.map((pt, index) => {
-      const emoji = pt.levelId ? `<:experience${pt.expLevel}:${pt.levelId}>` : '';
-      return `${index + 1}. [${pt.name}](<https://royaleapi.com/player/${(pt.playertag).substring(1)}>) (${pt.playertag}) ${emoji}`
-    }).join('\n'))
-    .setFooter({ text: `Send the # of the players you want to select/deselect\nSeparated by a space for each (1 2 3...)` })
-    .setColor('Purple');
+    .setDescription(description)
+    .setColor("Purple")
+    .setFooter({ text: `Send a message with the option numbers you wish to toggle (separated by spaces).` });
 
   await interaction.editReply({
     embeds: [embed],
@@ -237,47 +305,46 @@ async function handleMultiplePlayertags(interaction, user, playertags) {
 
   let selectedIndices = new Set();
   return new Promise((resolve, reject) => {
-
     buttonCollector.on('collect', async i => {
       await i.deferUpdate();
       if (i.customId === 'ccContinue') {
         buttonCollector.stop('continue');
         messageCollector.stop('continue');
-        resolve(Array.from(selectedIndices).map(index => playersData[index].playertag));
-      }
-      else if (i.customId === 'ccStop') {
+        // When confirmed, resolve with a flattened array of objects: { user, playertag, name }.
+        // We map each selected option number to its object.
+        const selections = Array.from(selectedIndices).map(index => {
+          return {
+            user: mapping[index].user,
+            playertag: mapping[index].playertag,
+            name: mapping[index].pt.name
+          };
+        });
+        resolve(selections);
+      } else if (i.customId === 'ccStop') {
         buttonCollector.stop('stop');
         messageCollector.stop('stop');
-        // resolve(new Error(`Command stopped by user`));
         resolve('stop');
       }
     });
-
     messageCollector.on('collect', async m => {
-      interactionOccured = true;
-      const inputContent = m.content.split(' ');
-      const inputIndices = new Set(m.content.split(' ').map(num => parseInt(num - 1)));
-
-      const allValid = inputContent.every(num => !isNaN(parseInt(num)) && parseInt(num) > 0 && parseInt(num) <= playersData.length);
-
+      // Split the input by whitespace and convert to numbers (1-based).
+      const inputNumbers = m.content.split(' ').map(n => parseInt(n, 10)).filter(n => !isNaN(n));
+      // Validate that each number is within our options range.
+      const allValid = inputNumbers.every(n => n > 0 && n < currentOption);
       if (allValid) {
-        inputIndices.forEach(index => {
-          if (selectedIndices.has(index)) {
-            selectedIndices.delete(index);
-          }
-          else {
-            selectedIndices.add(index);
-          }
-        })
-
+        // Toggle each number in the selectedIndices.
+        inputNumbers.forEach(num => {
+          if (selectedIndices.has(num)) selectedIndices.delete(num);
+          else selectedIndices.add(num);
+        });
         try {
           await m.delete();
         } catch (error) {
-          console.log("Someone tried 2 create channel's and typing");
+          console.error("Error deleting message:", error);
         }
-        embed = generateEmbed(user, playersData, selectedIndices);
-        await interaction.editReply({ embeds: [embed], ephemeral: true })
-        console.log(selectedIndices);
+        // Update the embed.
+        const updatedEmbed = generateEmbedFromMapping(mapping, selectedIndices, groupMapping);
+        await interaction.editReply({ embeds: [updatedEmbed], components: [row], ephemeral: true });
       }
     });
 
@@ -359,7 +426,7 @@ function createButtonRow() {
     .addComponents(
       new ButtonBuilder()
         .setCustomId('ccContinue')
-        .setLabel('Continue')
+        .setLabel('Confirm')
         .setStyle(ButtonStyle.Primary)
     )
     .addComponents(
@@ -370,19 +437,31 @@ function createButtonRow() {
     );
 }
 
-function generateEmbed(user, playersData, selectedIndices) {
+// Helper to regenerate the embed that shows the options and
+// marks selected ones with a checkmark.
+function generateEmbedFromMapping(mapping, selectedIndices, groupMapping) {
+  let description = "";
+  for (const userId in groupMapping) {
+    description += `**<@${userId}>**\n`;
+    groupMapping[userId].forEach(opt => {
+      const entry = mapping[opt];
+      const emoji = entry.pt.levelId ? `<:experience${entry.pt.expLevel}:${entry.pt.levelId}>` : "";
+      const checkmark = selectedIndices.has(opt) ? " ✅" : "";
+      description += `${opt}. [${entry.pt.name}](<https://royaleapi.com/player/${entry.pt.playertag.substring(1)}>) (${entry.pt.playertag}) ${emoji}${checkmark}\n`;
+    });
+    description += "\n";
+  }
   return new EmbedBuilder()
-    .setDescription(`### Choosing playertag(s) for <@${user}>\n` + playersData.map((pt, index) => {
-      const emoji = pt.levelId ? `<:experience${pt.expLevel}:${pt.levelId}>` : '';
-      const isSelected = selectedIndices.has(index) ? '✅' : '' // mark as selected
-      return `${index + 1}. [${pt.name}](<https://royaleapi.com/player/${(pt.playertag).substring(1)}>) (${pt.playertag}) ${emoji} ${isSelected}`
-    }).join('\n'))
+    .setDescription(description)
+    .setColor("Purple")
+    .setFooter({ text: "Send a message with the numbers (space separated) to toggle selection." });
 }
 
 // Show who was added to the channel, using code from checkInClan.js
 async function getAddedMembersDescription(db, channel) {
   let channelMembers = await db.get(`massLinkChannels.${channel.id}`);
   let members = channelMembers.playersAdded;
+  console.log(members);
   // let membersInClan = {};
   // for (const member of clanData.memberList) {
   //   membersInClan[member.tag] = { name: member.name, role: member.role };

@@ -471,10 +471,10 @@ async function checkAttacks(db, members, raceData, client, guildId, channelId, l
       let role = player.role;
       let attackString = "";
       if (hour >= 22 || hour <= 3) {
-        attackString += await checkIfPing(role, player, discordData, true);
+        attackString += await checkIfPing(role, player, discordData, true, l2w);
       }
       else {
-        attackString += await checkIfPing(role, player, discordData, false);
+        attackString += await checkIfPing(role, player, discordData, false, l2w);
       }
 
       if (discordData) {
@@ -573,7 +573,7 @@ playerData: {
 } 
   DiscordData: { 'attacking-late': true, playertags: [ '#P9J292JCL', '#J20Y2QG0Y' ] }
 */
-async function checkIfPing(role, playerData, discordData, all) {
+async function checkIfPing(role, playerData, discordData, all, l2w) {
   let emojis = [];
   if (all) { // all ping for attacking lates
     // Not in clan and no discord data

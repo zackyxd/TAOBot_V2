@@ -101,3 +101,9 @@ module.exports = {
   }
 
 }
+
+async function getPlayerName(playertag) {
+  if (playertag.charAt(0) !== '#') playertag = "#" + playertag;
+  let playerData = await API.getPlayer(playertag);
+  return playerData.name;
+}
