@@ -157,8 +157,8 @@ module.exports = {
     const channel = await guild.channels.create({
       name: `members-${count}-${describe}`, // Ensure the name field is defined
       type: ChannelType.GuildText,
-      parent: '1182482429810847807', // my guild category id
-      // parent: "1283051581834530978", // TAO category id
+      // parent: '1182482429810847807', // my guild category id
+      parent: "1283051581834530978", // TAO category id
       permissionOverwrites: null, // Inherit permissions from the category
     });
 
