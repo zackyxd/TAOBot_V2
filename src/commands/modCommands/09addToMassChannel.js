@@ -380,7 +380,7 @@ function generateEmbedFromMapping(mapping, selectedIndices, groupMapping) {
 // Helper to generate an updated embed from mapping and selected indices.
 // This version also attempts to visually group options by user.
 function generateEmbedFromMapping(mapping, selectedIndices, groupMapping) {
-  let description = "### Choose Players\n\n";
+  let description = "";
   // Loop over each user group in groupMapping.
   for (const userId in groupMapping) {
     // Instead of printing "User ID: ${userId}", print the mention:

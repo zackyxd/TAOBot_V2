@@ -71,56 +71,29 @@ module.exports = {
       return a[1].name.localeCompare(b[1].name);
     });
 
-
-
     let sortedIfPlayerInClan = Object.fromEntries(sortedNames);
-    // let description = "";
     let usersToPing = new Set();
     let usersNotPing = new Set();
 
-    const MAX_FIELD_LENGTH = 25;
-    let fieldContent = [];
-    // Send embed
-    let embed = new EmbedBuilder()
-      .setTitle(`${clanData.name} Member Check (${membersInClanCount}/${members.length})`)
-      .setThumbnail(process.env.BOT_IMAGE)
-      .setColor(`Purple`);
+    let descriptionInClan = "";
+    let descriptionNotInClan = "";
     for (let player in sortedIfPlayerInClan) {
-      console.log("Saw player:", player)
       let playerData = sortedIfPlayerInClan[player];
 
-      fieldContent.push({
-        name: '\t',
-        value: `[${playerData.name}](<https://royaleapi.com/player/${(playerData.playertag).substring(1)}>) ${playerData.inClan ? '✅' : '❌'}`,
-        inline: true
-      })
-
-      if (fieldContent.length >= MAX_FIELD_LENGTH && !pingMissing) {
-        embed.addFields(fieldContent);
-        if (membersInClanCount === members.length) {
-          embed.setFooter({ text: 'All members in this channel have joined!' })
-        }
-        await interaction.channel.send({ embeds: [embed] });
-
-        embed = new EmbedBuilder()
-          .setTitle(`${clanData.name} Member Check (cont.)`)
-          .setThumbnail(process.env.BOT_IMAGE)
-          .setColor(`Purple`);
-        fieldContent = [];
-        // .setURL(`https://royaleapi.com/clan/${clanData.tag.substring(1)}`)
+      if (playerData.inClan === true) {
+        descriptionInClan += `[${playerData.name}](<https://royaleapi.com/player/${(playerData.playertag).substring(1)}>) ✅\n`;
+      } else if (playerData.inClan === false) {
+        descriptionNotInClan += `[${playerData.name}](<https://royaleapi.com/player/${(playerData.playertag).substring(1)}>) ❌\n`;
       }
-
-
-      // if (playerData.inClan === true) {
-      //   fieldContent += `[${playerData.name}](<https://royaleapi.com/player/${(playerData.playertag).substring(1)}>) ${playerData.inClan ? '✅' : '❌'}`;
-      // } else if (playerData.inClan === false) {
-      //   fieldContent += `[${playerData.name}](<https://royaleapi.com/player/${(playerData.playertag).substring(1)}>) ❌\n`;
-      // }
-
       // Fetch the Discord user ID for each player tag
       let discordId = await db.get(`playertags.${playerData.playertag}.discordId`);
 
-
+      // Add or remove discordId from sets based on player's inClan status
+      // if (playerData.inClan === true) {
+      //   usersNotPing.add(discordId);
+      //   if (usersToPing.has(discordId)) {
+      //     usersToPing.delete(discordId);
+      //   } else if below
       if (playerData.inClan === false) { // && playerData.level > 25
         if (!usersNotPing.has(discordId)) {
           console.log("Adding discordId to usersToPing: ", discordId);
@@ -129,14 +102,7 @@ module.exports = {
       }
     }
 
-    // Add any remaining content as a field
-    if (fieldContent.length > 0 && !pingMissing) {
-      embed.addFields(fieldContent);
-      if (membersInClanCount === members.length) {
-        embed.setFooter({ text: 'All members in this channel have joined!' });
-      }
-      await interaction.channel.send({ embeds: [embed] });
-    }
+    let description = descriptionInClan + descriptionNotInClan;
 
     let playerPings1 = `**You have not joined \`${clanData.name}\` yet, please join:** `;
     let playerPings2 = ""; // list of players
@@ -166,10 +132,12 @@ module.exports = {
       if (clanInfo && clanInfo.clanLink && clanInfo.alreadyExpired === 1) {
         await interaction.channel.send({ embeds: [createErrorEmbed(`The link for \`${clanInfo.clanName}\` is currently expired. Please generate a new invite.`)] });
       }
+      // If = 0 means not expired, so send link.
       if (clanInfo && clanInfo.clanLink && clanInfo.alreadyExpired === 0) {
         let embed = new EmbedBuilder()
           .setColor('#00FF00') // Green color for success
           .setDescription(`## [Click here to join ${clanInfo.clanName}](<${clanInfo.clanLink}>)\n-# Expires: <t:${clanInfo.expiryTime}:R>`) // Make the message bold
+        console.log(membersInClanCount, members.length);
         if (membersInClanCount === members.length) {
           embed.setFooter({ text: 'All members in this channel have joined!' })
         }
@@ -182,51 +150,48 @@ module.exports = {
       return;
     }
 
-    // const MAX_DESC_LENGTH = 2000;
-    // console.log("Description length of check-clan is:", description.length);
-    // let descriptions = splitDescription(description, MAX_DESC_LENGTH);
 
-    // if (description.length < 1) {
-    //   await interaction.editReply({ embeds: [createErrorEmbed(`The message was unable to send due to the length being ${description.length}. Likely no playertags added.`)] });
-    //   return;
-    // }
-    // await interaction.editReply({ embeds: [createSuccessEmbed(`Sent list of players.`)] });
-    // for (let desc of descriptions) {
+    console.log("Description length of check-clan is:", description.length);
+    // Assume 'description' is a string containing many lines,
+    // where each line is built like:
+    // `[PlayerName](<https://royaleapi.com/player/...>) ✅` or similar.
+    const MAX_DESC_LENGTH = 2000; // maximum allowed by Discord is 4096; 
+    // You can lower this if you want your embed fields to be shorter.
+    const lines = description.split('\n'); // get the individual lines
+    const embedDescriptions = buildEmbedsFromLines(lines, MAX_DESC_LENGTH);
 
-    //   let embed = new EmbedBuilder()
-    //     .setTitle(`${clanData.name} Member Check (${membersInClanCount}/${members.length})`)
-    //     .setThumbnail(process.env.BOT_IMAGE)
-    //     .setColor(`Purple`)
-    //     // .setURL(`https://royaleapi.com/clan/${clanData.tag.substring(1)}`)
-    //     .setDescription(desc);
-    //   console.log(membersInClanCount, members.length);
-    //   if (membersInClanCount === members.length) {
-    //     embed.setFooter({ text: 'All members in this channel have joined!' })
-    //   }
+    // Now send each part in its own embed.
+    for (const descPart of embedDescriptions) {
+      let embed = new EmbedBuilder()
+        .setTitle(`${clanData.name} Member Check (${membersInClanCount}/${members.length})`)
+        .setThumbnail(process.env.BOT_IMAGE)
+        .setColor("Purple")
+        .setDescription(descPart);
+      if (membersInClanCount === members.length) {
+        embed.setFooter({ text: 'All members in this channel have joined!' });
+      }
+      await interaction.channel.send({ embeds: [embed] });
+    }
 
-    //   await interaction.channel.send({ embeds: [embed] })
-    // }
-
-    await interaction.editReply({ embeds: [createSuccessEmbed(`Sent list of players.`)] });
+    await interaction.editReply({ embeds: [createSuccessEmbed(`Check complete.`)] });
   }
 }
 
-function splitDescription(description, maxLength) {
-  let chunks = [];
-  while (description.length > 0) {
-    if (description.length > maxLength) {
-      // Find last newline char in limit
-      let chunkEnd = description.lastIndexOf('\n', maxLength);
-      if (chunkEnd === -1) {
-        chunkEnd = maxLength; // no newline found, split at maxlength
-      }
-      chunks.push(description.slice(0, chunkEnd));
-      description = description.slice(chunkEnd + 1);
-    }
-    else {
-      chunks.push(description);
-      description = "";
+// This helper function takes an array of lines and a maximum length,
+// and returns an array of embed description strings.
+function buildEmbedsFromLines(lines, maxLen) {
+  const embeds = [];
+  let current = "";
+  for (const line of lines) {
+    // If adding this line (plus a newline if needed) exceeds max length,
+    // push the current description and reset.
+    if ((current.length + line.length + (current ? 1 : 0)) > maxLen) {
+      embeds.push(current);
+      current = line;
+    } else {
+      current = current ? current + "\n" + line : line;
     }
   }
-  return chunks;
+  if (current) embeds.push(current);
+  return embeds;
 }

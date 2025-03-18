@@ -1,5 +1,5 @@
 const API = require("../../API.js");
-const { Events, ActivityType, EmbedBuilder } = require("discord.js");
+const { Events, ActivityType, EmbedBuilder, PermissionsBitField } = require("discord.js");
 const path = require('path');
 const Database = require('better-sqlite3');
 const { QuickDB } = require("quick.db")
@@ -141,7 +141,7 @@ async function processMemberJoinLeave(db, previousData, currentData, clantag, gu
 
         // Additional actions for join or leave
         if (action === 'join') {
-          await handleMemberJoin(db, guildMember, clantag, playertag, clanRole, globalRole, member.name);
+          await handleMemberJoin(db, guildMember, clantag, playertag, clanRole, globalRole, member.name, currentData.clanWarTrophies);
         }
         else if (action === 'left') {
           await handleMemberLeave(db, clantag, playertag);
@@ -175,10 +175,12 @@ async function processMemberJoinLeave(db, previousData, currentData, clantag, gu
 }
 
 // When member joins, give them role. 
-async function handleMemberJoin(db, guildMember, clantag, playertag, clanRole, globalRole, memberName) {
+async function handleMemberJoin(db, guildMember, clantag, playertag, clanRole, globalRole, memberName, clanWarTrophies) {
   if (guildMember && guildMember.roles.cache.has(globalRole)) {
     try {
-      await guildMember.roles.add(clanRole)
+      if (!guildMember.permissions.has(PermissionsBitField.Flags.MuteMembers) || clanWarTrophies >= 5000) {
+        await guildMember.roles.add(clanRole)
+      }
     } catch (error) {
       console.log(error);
     }
