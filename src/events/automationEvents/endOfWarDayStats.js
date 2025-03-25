@@ -47,6 +47,9 @@ const checkRace = async (client) => {
       await db.set('clanTest', clans)
     })
     console.log("Finished resetting all posted races");
+  }, {
+    scheduled: true,
+    timezone: 'America/Phoenix'
   })
 }
 

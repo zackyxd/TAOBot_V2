@@ -6,6 +6,7 @@ const fs = require('fs');
 const { createSuccessEmbed, createExistEmbed, createErrorEmbed, createMaintenanceEmbed } = require('../../utilities/embedUtility.js');
 const cron = require('node-cron');
 const moment = require('moment-timezone');
+const { findAttacks } = require('../dataUpdates/findPlayerAttacksInClans.js');
 
 async function grabClanMembers(clantag) {
   let clanData = await API.getClan(clantag);
@@ -124,6 +125,8 @@ async function postAutoNudge(client, nudgeType) {
     if (!clans) {
       return;
     }
+
+    await findAttacks(client); // Update all player attacks in database
 
     await Promise.all(Object.keys(clans).map(async (clantag) => {
       // console.log(clantag);
@@ -547,7 +550,6 @@ async function checkAttacks(db, members, raceData, client, guildId, channelId, l
 }
 
 async function checkIfCanViewChannel(client, discordId, guildId, channelId) {
-
   try {
     const guild = client.guilds.cache.get(guildId);
     const channel = await client.channels.fetch(channelId);
