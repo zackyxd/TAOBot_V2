@@ -29,16 +29,16 @@ module.exports = {
     });
 
     // Cache all members
-    console.log('Fetching members for all guilds on startup...');
-    for (const guild of client.guilds.cache.values()) {
-      try {
-        await fetchAllMembers(guild);
-      }
-      catch (error) {
-        console.error("Error fetching members for guild ${guild.id}");
-      }
-    }
-    console.log("All members fetched");
+    // console.log('Fetching members for all guilds on startup...');
+    // for (const guild of client.guilds.cache.values()) {
+    //   try {
+    //     await fetchAllMembers(guild);
+    //   }
+    //   catch (error) {
+    //     console.error("Error fetching members for guild ${guild.id}");
+    //   }
+    // }
+    // console.log("All members fetched");
 
     // every thursday at 3am
     // resetPlayerData(client);

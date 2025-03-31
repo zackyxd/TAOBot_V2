@@ -5,6 +5,7 @@ const { QuickDB } = require("quick.db")
 const fs = require('fs');
 const { createSuccessEmbed, createExistEmbed, createErrorEmbed, createMaintenanceEmbed } = require('../../utilities/embedUtility.js');
 const cron = require('node-cron');
+const { channel } = require("diagnostics_channel");
 require('dotenv/config');
 
 
@@ -20,7 +21,7 @@ const checkRace = async (client) => {
     timezone: 'America/Phoenix'
   });
 
-  cron.schedule('0-40 3 * * 4,5,6,7,1', async function () {
+  cron.schedule('0-55 3 * * 4,5,6,7,1', async function () {
     // cron.schedule('0-59 8 * * *', async function () {
     // cron.schedule('*/5 * * * * *', async function () {
     // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
@@ -31,7 +32,7 @@ const checkRace = async (client) => {
     timezone: 'America/Phoenix'
   });
 
-  cron.schedule('45 3 * * *', async function () {
+  cron.schedule('0 4 * * *', async function () {
     client.guilds.cache.forEach(async (guild) => {
       const db = await API.getDb(guild.id);
       const clans = await db.get('clanTest');
@@ -46,7 +47,7 @@ const checkRace = async (client) => {
       }
       await db.set('clanTest', clans)
     })
-    console.log("Finished resetting all posted races");
+    console.log("Finished resetting all posted races to false posted");
   }, {
     scheduled: true,
     timezone: 'America/Phoenix'
@@ -70,9 +71,9 @@ async function postRace(client) {
         let raceData = updatedData.data;
         let newAttacks = await getAttacks(raceData);
 
-        let embed = null;
-        let embed2 = null;
-        let oldRaceInfo = await db.get(`clanTest.${clantag}`);
+        let warScoresEmbed = null;
+        let attacksLeftEmbed = null;
+        let oldRaceInfo = await db.get(`warResetRaceData.${clantag}`);
         if (!oldRaceInfo) { // If no previous race info, add it.
           console.log("No race info, adding:", clantag);
           let grabData = await getNewData(clantag);
@@ -96,15 +97,15 @@ async function postRace(client) {
           // Regular War Day
           console.log("War Day");
           let allClans = getAllClans(oldRaceInfo);
-          embed = await outputWarDayInfo(allClans, clantag, oldRaceInfo.periodIndex, oldRaceInfo.sectionIndex, oldRaceInfo.clanName);
-          embed2 = await remainingAttacks(oldRaceInfo);
+          warScoresEmbed = await outputWarDayInfo(allClans, clantag, oldRaceInfo.periodIndex, oldRaceInfo.sectionIndex, oldRaceInfo.clanName);
+          attacksLeftEmbed = await remainingAttacks(oldRaceInfo);
         }
         else if (raceType === 2) {
           // Colosseum Day
           console.log("Colosseum Day");
           let allClans = getAllClans(oldRaceInfo);
-          embed = await outputColoInfo(allClans, clantag, oldRaceInfo.periodIndex, oldRaceInfo.clanName);
-          embed2 = await remainingAttacks(oldRaceInfo);
+          warScoresEmbed = await outputColoInfo(allClans, clantag, oldRaceInfo.periodIndex, oldRaceInfo.clanName);
+          attacksLeftEmbed = await remainingAttacks(oldRaceInfo);
         }
         else {
           // Training Day
@@ -115,15 +116,20 @@ async function postRace(client) {
 
         try {
           console.log("POST FOR:", clantag);
-          await channel.send({ embeds: [embed] });  // Send the message
-          await channel.send({ embeds: [embed2] });  // Send the message
+          let warScoreMessage = await channel.send({ embeds: [warScoresEmbed] });
+          let attacksLeftMessage = await channel.send({ embeds: [attacksLeftEmbed] });
           await addToDatabase(clantag, raceData, guild.id, true);
+
+          // oldRaceInfo is the API race data
+          await pinRace(db, guild.id, oldRaceInfo, warScoreMessage, attacksLeftMessage); // Call pin race to pin the current race
+
           console.log(`Message sent to guild: ${guild.name}`);
         } catch (error) {
           console.error(`Failed to send message to guild: ${guild.name}`, error);
         }
       }
     }
+    console.log("Finished end of day stats for all clans");
   });
 }
 
@@ -472,7 +478,7 @@ async function addToDatabase(clantag, data, guildId, posted) {
   });
 
   // console.log("Data given", data);
-  await db.set(`clanTest.${clantag}`, {
+  await db.set(`warResetRaceData.${clantag}`, {
     clans: relevantData,
     attacks: await getAttacks(data), // get attacks for the clan checking,
     periodIndex: data.periodIndex, // is day of war
@@ -484,6 +490,115 @@ async function addToDatabase(clantag, data, guildId, posted) {
     postedRace: posted
   });
   // console.log(test);
+}
+
+async function pinRace(db, guildId, raceData, warScoreMessage, attacksLeftMessage) {
+  // console.log(warScoreMessage, attacksLeftMessage);
+  let clan = raceData.clans.find(clan => clan.clantag === raceData.clantag);
+  // console.log(clan);
+  let day = (raceData.periodIndex % 7) - 2;
+  let week = raceData.sectionIndex + 1;
+
+  let clanInfo = { day: day, week: week };
+
+  // Need to make the days into key and value so i can iterate through them to create the message
+
+  let pinData = await db.get(`pinnedRaceMessage.${raceData.clantag}`); // Info of the message and days
+
+  let days;
+  if (pinData && pinData.day <= day) {
+    days = pinData?.days || {};
+  }
+  else if (pinData && pinData.day > day) {
+    // Reset both, make sure days is set
+    pinData.days = {};
+    days = pinData.days;
+  }
+  else {
+    days = {}; // Create object
+  }
+
+  function createHyperlink(text, guildId, channelId, messageId) {
+    return `[${text}](<https://discord.com/channels/${guildId}/${channelId}/${messageId}>)`;
+  }
+
+  days[day] = `### Day ${day}\n**${createHyperlink(`Scores`, guildId, warScoreMessage.channel.id, warScoreMessage.id)} | ${createHyperlink(`Attacks`, guildId, attacksLeftMessage.channel.id, attacksLeftMessage.id)}**`;
+  if (pinData) {
+    pinData.days = days;
+  }
+  else {
+    clanInfo.days = days;
+  }
+
+  function createPinnedMessage(clan, days) {
+    let description = "";
+    for (const day in days) {
+      description += `${days[day]}\n`;
+    }
+    return new EmbedBuilder()
+      .setTitle(`__${clan.clanName}__`)
+      .setURL(`https://royaleapi.com/clan/${(clan.clantag).substring(1)}/war/race`)
+      .setDescription(description)
+      .setColor('Purple')
+      .setAuthor({ name: `War Week ${clanInfo.week}` })
+      .setThumbnail(process.env.BOT_IMAGE)
+  }
+
+  let pinnedMessage;
+  if (pinData && day >= pinData.day) { // Edit if race data day is higher.
+    let channelToSendTo = await client.channels.fetch(warScoreMessage.channel.id);
+
+    try {
+      pinnedMessage = await channelToSendTo.messages.fetch(pinData.messageId);
+    }
+    catch (error) { // If message doesn't exist, create new one and send it. 
+      let channelToSendTo = await client.channels.fetch(warScoreMessage.channel.id);
+      pinnedMessage = await channelToSendTo.send({ embeds: [createPinnedMessage(clan, days)] });
+      pinnedMessage.pin();
+      clanInfo.messageId = pinnedMessage.id;
+    }
+
+    await pinnedMessage.edit({ embeds: [createPinnedMessage(clan, days)] });
+    if (pinnedMessage.pinned === false) {
+      pinnedMessage.pin();
+    }
+  }
+  // If day is lower, reset the pinned message as new week.
+  else if (pinData && day < pinData.day) {
+    let channelToSendTo = await client.channels.fetch(warScoreMessage.channel.id);
+    try {
+      pinnedMessage = await channelToSendTo.messages.fetch(pinData.messageId);
+      pinnedMessage.unpin();
+
+      pinnedMessage = await channelToSendTo.send({ embeds: [createPinnedMessage(clan, days)] });
+      pinnedMessage.pin();
+      clanInfo.messageId = pinnedMessage.id;
+    }
+    catch (error) { // If pinned message is deleted, just create new one.
+      let channelToSendTo = await client.channels.fetch(warScoreMessage.channel.id);
+      pinnedMessage = await channelToSendTo.send({ embeds: [createPinnedMessage(clan, days)] });
+      pinnedMessage.pin();
+      clanInfo.messageId = pinnedMessage.id;
+    }
+
+  }
+  else { // Post for first time.
+    let channelToSendTo = await client.channels.fetch(warScoreMessage.channel.id);
+    pinnedMessage = await channelToSendTo.send({ embeds: [createPinnedMessage(clan, days)] });
+    pinnedMessage.pin();
+    clanInfo.messageId = pinnedMessage.id;
+  }
+
+
+  if (pinData) {
+    pinData.messageId = pinnedMessage.id; // Update the messageId in pinData if it exists
+    pinData.day = day;
+    pinData.week = week;
+  } else {
+    clanInfo.messageId = pinnedMessage.id; // For new data, store it in clanInfo
+  }
+
+  await db.set(`pinnedRaceMessage.${raceData.clantag}`, pinData || clanInfo);
 }
 
 async function main() {
@@ -518,114 +633,107 @@ async function main() {
 
 async function remainingAttacks(data) {
   // console.log(data);
-  let clan;
-  for (clan of data.clans) {
-    if (clan.clantag !== data.clantag) {
-      continue;
-    }
-    console.log("Found the clan:", clan.clanName)
+  let clan = data.clans.find(clan => clan.clantag === data.clantag);
+  console.log("Found the clan:", clan.clanName)
 
-    let participants = clan.participants;
-    // console.log(participants);
-    let clanData = await API.getClan(clan.clantag);
-    let membersInClan = {};
-    let membersNotInClan = {};
-    let attacksUsed = { 0: [], 1: [], 2: [], 3: [], 4: [] };
-    for (const member of clanData.memberList) {
-      membersInClan[member.tag] = { name: member.name, role: member.role };
-    }
-
-    for (const participant of participants) {
-      // console.log(participant);
-      if (participant.decksUsedToday >= 0) {
-        if (membersInClan[participant.tag]) {
-          membersInClan[participant.tag].decksUsedToday = participant.decksUsedToday;
-          attacksUsed[participant.decksUsedToday].push(participant.playerName);
-        }
-        else if (!membersInClan[participant.tag] && participant.decksUsedToday >= 1) {
-          let nameWithStar = participant.playerName + ' ❌';
-          membersNotInClan[participant.tag] = { name: nameWithStar, decksUsedToday: participant.decksUsedToday };
-          attacksUsed[participant.decksUsedToday].push(nameWithStar);
-        }
-      }
-    }
-
-    for (let i = 4; i >= 0; i--) {
-      attacksUsed[i].sort();
-    }
-
-    let description = "";
-    // If not past the finish line
-    if (clan.boatPoints < 10000 || data.periodType === "colosseum") {
-      for (let i = 0; i <= 3; i++) {
-        if (attacksUsed[i].length > 0) {
-          if (i !== 0) {
-            description += '\n';
-          }
-          if (i === 3) {
-            description += `__**${4 - i} Attack**__ (${attacksUsed[i].length})\n`;
-          }
-          else {
-            description += `__**${4 - i} Attacks**__ (${attacksUsed[i].length})\n`;
-          }
-        }
-        attacksUsed[i].forEach(name => {
-          description += "* " + name + "\n";
-        })
-      }
-      description += `\n<:peopleLeft:1188128630270861492> ${data.playersRemaining}\n<:decksLeft:1187752640508088370> ${200 - data.attacks}`
-    }
-    else {
-      description += "**Remove these attacks.**\n"
-      for (let i = 4; i >= 1; i--) {
-        if (attacksUsed[i].length > 0) {
-          if (i !== 0) {
-            description += '\n';
-          }
-          if (i === 1) {
-            description += `__**${i} Attack Used**__ (${attacksUsed[i].length})\n`;
-          }
-          else {
-            description += `__**${i} Attacks Used**__ (${attacksUsed[i].length})\n`;
-          }
-        }
-        attacksUsed[i].forEach(name => {
-          description += "* " + name + "\n";
-        })
-      }
-      description += `\n<:peopleLeft:1188128630270861492> ${50 - data.playersRemaining}\n<:decksLeft:1187752640508088370> ${data.attacks}`
-    }
-
-
-
-
-
-    // description += `\n<:peopleLeft:1188128630270861492> ${data.playersRemaining}\n<:decksLeft:1187752640508088370> ${200 - data.attacks}`
-    // console.log(description);
-    let author = '';
-    if (data.periodType === 'colosseum') {
-      author = `${getDayType(checkWhichTypeRace(data.periodType))} | Day ${data.periodIndex % 7 - 2}`
-    }
-    else {
-      author = `${getDayType(checkWhichTypeRace(data.periodType))} ${data.sectionIndex + 1} | Day ${data.periodIndex % 7 - 2}`
-    }
-
-    let embed = new EmbedBuilder()
-      .setTitle("__" + clanData.name + "__")
-      .setURL(`https://royaleapi.com/clan/${(clanData.tag).substring(1)}/war/race`)
-      .setAuthor({ name: author })
-      .setDescription(description)
-      .setColor('Purple')
-      .setThumbnail(process.env.BOT_IMAGE)
-      .setTimestamp()
-    // .setFooter({ text: footer });
-    // console.log(embed);
-    return embed;
-
+  let participants = clan.participants;
+  // console.log(participants);
+  let clanData = await API.getClan(clan.clantag);
+  let membersInClan = {};
+  let membersNotInClan = {};
+  let attacksUsed = { 0: [], 1: [], 2: [], 3: [], 4: [] };
+  for (const member of clanData.memberList) {
+    membersInClan[member.tag] = { name: member.name, role: member.role };
   }
 
-}
+  for (const participant of participants) {
+    // console.log(participant);
+    if (participant.decksUsedToday >= 0) {
+      if (membersInClan[participant.tag]) {
+        membersInClan[participant.tag].decksUsedToday = participant.decksUsedToday;
+        attacksUsed[participant.decksUsedToday].push(participant.playerName);
+      }
+      else if (!membersInClan[participant.tag] && participant.decksUsedToday >= 1) {
+        let nameWithStar = participant.playerName + ' ❌';
+        membersNotInClan[participant.tag] = { name: nameWithStar, decksUsedToday: participant.decksUsedToday };
+        attacksUsed[participant.decksUsedToday].push(nameWithStar);
+      }
+    }
+  }
 
+  for (let i = 4; i >= 0; i--) {
+    attacksUsed[i].sort();
+  }
+
+  let description = "";
+  // If not past the finish line
+  if (clan.boatPoints < 10000 || data.periodType === "colosseum") {
+    for (let i = 0; i <= 3; i++) {
+      if (attacksUsed[i].length > 0) {
+        if (i !== 0) {
+          description += '\n';
+        }
+        if (i === 3) {
+          description += `__**${4 - i} Attack**__ (${attacksUsed[i].length})\n`;
+        }
+        else {
+          description += `__**${4 - i} Attacks**__ (${attacksUsed[i].length})\n`;
+        }
+      }
+      attacksUsed[i].forEach(name => {
+        description += "* " + name + "\n";
+      })
+    }
+    description += `\n<:peopleLeft:1188128630270861492> ${data.playersRemaining}\n<:decksLeft:1187752640508088370> ${200 - data.attacks}`
+  }
+  else {
+    description += "**Remove these attacks.**\n"
+    for (let i = 4; i >= 1; i--) {
+      if (attacksUsed[i].length > 0) {
+        if (i !== 0) {
+          description += '\n';
+        }
+        if (i === 1) {
+          description += `__**${i} Attack Used**__ (${attacksUsed[i].length})\n`;
+        }
+        else {
+          description += `__**${i} Attacks Used**__ (${attacksUsed[i].length})\n`;
+        }
+      }
+      attacksUsed[i].forEach(name => {
+        description += "* " + name + "\n";
+      })
+    }
+    description += `\n<:peopleLeft:1188128630270861492> ${50 - data.playersRemaining}\n<:decksLeft:1187752640508088370> ${data.attacks}`
+  }
+
+
+
+
+
+  // description += `\n<:peopleLeft:1188128630270861492> ${data.playersRemaining}\n<:decksLeft:1187752640508088370> ${200 - data.attacks}`
+  // console.log(description);
+  let author = '';
+  if (data.periodType === 'colosseum') {
+    author = `${getDayType(checkWhichTypeRace(data.periodType))} | Day ${data.periodIndex % 7 - 2}`
+  }
+  else {
+    author = `${getDayType(checkWhichTypeRace(data.periodType))} ${data.sectionIndex + 1} | Day ${data.periodIndex % 7 - 2}`
+  }
+
+  let embed = new EmbedBuilder()
+    .setTitle("__" + clanData.name + "__")
+    .setURL(`https://royaleapi.com/clan/${(clanData.tag).substring(1)}/war/race`)
+    .setAuthor({ name: author })
+    .setDescription(description)
+    .setColor('Purple')
+    .setThumbnail(process.env.BOT_IMAGE)
+    .setTimestamp()
+  // .setFooter({ text: footer });
+  // console.log(embed);
+  return embed;
+
+}
 
 // Escape markdown issues
 function escapeMarkdown(text) {
