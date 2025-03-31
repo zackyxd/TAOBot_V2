@@ -83,7 +83,7 @@ module.exports = {
       // }, 10000);
     }, 180000);
 
-    findPlayerAttacks(client);
+    // findPlayerAttacks(client); // Changed this because didnt need it running 24/7
 
     setInterval(async () => {
       await verifyClanlogs(client);

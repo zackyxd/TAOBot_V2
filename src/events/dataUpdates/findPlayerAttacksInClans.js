@@ -32,19 +32,19 @@ const cron = require('node-cron');
 
 const findPlayerAttacks = async (client) => {
   // await findAttacks(client);
-  cron.schedule('0 */3 * * * 4,5,6,7', async function () {
-    findAttacks(client);
-  }, {
-    scheduled: true,
-    timezone: 'America/Phoenix'
-  });
+  // cron.schedule('0 */3 * * * 4,5,6,7', async function () {
+  //   findAttacks(client);
+  // }, {
+  //   scheduled: true,
+  //   timezone: 'America/Phoenix'
+  // });
 
-  cron.schedule('0 */4 0-2 * * 1', async function () {
-    await findAttacks(client);
-  }, {
-    scheduled: true,
-    timezone: 'America/Phoenix'
-  });
+  // cron.schedule('0 */4 0-2 * * 1', async function () {
+  //   await findAttacks(client);
+  // }, {
+  //   scheduled: true,
+  //   timezone: 'America/Phoenix'
+  // });
 }
 
 const participantBatchSize = 10; // Batch size for participants
@@ -185,4 +185,4 @@ function sleep(ms) {
 }
 
 
-module.exports = { findPlayerAttacks };
+module.exports = { findPlayerAttacks, findAttacks };

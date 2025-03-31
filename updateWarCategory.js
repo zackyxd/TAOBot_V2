@@ -11,11 +11,11 @@ async function updateWarCategory() {
 
   for (const [clanTag, clanInfo] of Object.entries(clans)) {
     const abbreviation = clanInfo.abbreviation;
-    console.log(clanTag);
     // Fetch war trophies using the API
     let warTrophies;
+    let clan;
     try {
-      let clan = await API.getClan(clanTag);
+      clan = await API.getClan(clanTag);
       warTrophies = clan.clanWarTrophies;
     } catch (error) {
       console.log(`Error fetching war trophies for clan ${abbreviation}:`, error);
@@ -35,6 +35,7 @@ async function updateWarCategory() {
     // Update the clan information with the new warCategory
     clanInfo.warCategory = warCategory;
     await db.set(`clans.${clanTag}`, clanInfo);
+    console.log(`Set ${clan.name} war category to ${warCategory}`);
   }
 }
 

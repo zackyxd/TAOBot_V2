@@ -8,6 +8,7 @@ const { createSuccessEmbed, createExistEmbed, createErrorEmbed, createMaintenanc
 const moment = require('moment-timezone');
 const { send } = require("process");
 const { time } = require("console");
+const { findAttacks } = require('../../events/dataUpdates/findPlayerAttacksInClans.js');
 
 
 module.exports = {
@@ -65,6 +66,9 @@ module.exports = {
           return;
         }
       }
+
+      await findAttacks(client);
+
       let sendMessage;
       if (all) {
         sendMessage = await getAttacksAll(clantag, db, interaction.user.id, interaction);

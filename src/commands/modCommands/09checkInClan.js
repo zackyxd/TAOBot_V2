@@ -141,6 +141,7 @@ module.exports = {
         if (membersInClanCount === members.length) {
           embed.setFooter({ text: 'All members in this channel have joined!' })
         }
+        pingMessage += `\n-# Sent by ${interaction.user.username}`
         // .setFooter({ text: convertUnixToTime(clanInfo.expiryTime) })
         await interaction.channel.send(pingMessage);
         await interaction.channel.send({ embeds: [embed] });
