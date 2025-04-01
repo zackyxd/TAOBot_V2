@@ -129,7 +129,8 @@ module.exports = {
       try {
         selectedTags = await handleMultiplePlayertags(interaction, multiPlayertagsData);
       } catch (error) {
-        await interaction.followUp({ content: '', embeds: [createExistEmbed(`Timed out of invalid. ${error}`)], components: [] })
+        console.log(error);
+        await interaction.followUp({ content: '', embeds: [createExistEmbed(`Timed out or invalid. ${error}. Likely too many players in the list`)], components: [] })
         return;
       }
 

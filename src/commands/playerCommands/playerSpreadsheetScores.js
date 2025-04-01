@@ -180,7 +180,6 @@ function findPlayertagData(rows, playertag) {
   const headerRow = rows[0];
   let playerData;
   for (const [index, row] of rows.entries()) {
-    console.log(row[0]);
     if (row.includes(playertag)) {
       playerData = { row, headerRow, rowIndex: index };
       return outputPlayerData(playerData);
