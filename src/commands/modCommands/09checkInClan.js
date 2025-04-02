@@ -54,6 +54,8 @@ module.exports = {
 
     let ifPlayerInClan = {};
     let membersInClanCount = 0;
+    let users = await db.get('users');
+
     // Use Promise.all to fetch player data concurrently
     let playerPromises = members.map(async member => {
       let player = await API.getPlayer(member);
@@ -77,16 +79,26 @@ module.exports = {
 
     let descriptionInClan = "";
     let descriptionNotInClan = "";
+    let discordIds = await db.get(`playertags`);
+
+    // Grab 12 hours before war starts
+    const timezone = 'America/Phoenix';
+    const dayAndHour = getDayAndHour(timezone);
+    let delayPings = true; // If delayPings = true, do not ping set players
+    if (dayAndHour.day === 'Wednesday' && dayAndHour.hour >= 14) delayPings = false;
+
+
     for (let player in sortedIfPlayerInClan) {
       let playerData = sortedIfPlayerInClan[player];
-
+      let addClock = showPingDelay(playerData.playertag, discordIds, users, delayPings); // Add clock to string if movementPingsDelay = true for player
       if (playerData.inClan === true) {
         descriptionInClan += `[${playerData.name}](<https://royaleapi.com/player/${(playerData.playertag).substring(1)}>) ✅\n`;
       } else if (playerData.inClan === false) {
-        descriptionNotInClan += `[${playerData.name}](<https://royaleapi.com/player/${(playerData.playertag).substring(1)}>) ❌\n`;
+        descriptionNotInClan += `[${playerData.name}](<https://royaleapi.com/player/${(playerData.playertag).substring(1)}>) ❌${addClock}\n`;
       }
       // Fetch the Discord user ID for each player tag
-      let discordId = await db.get(`playertags.${playerData.playertag}.discordId`);
+      // let discordId = await db.get(`playertags.${playerData.playertag}.discordId`);
+      let discordId = discordIds[playerData.playertag].discordId;
 
       // Add or remove discordId from sets based on player's inClan status
       // if (playerData.inClan === true) {
@@ -94,8 +106,13 @@ module.exports = {
       //   if (usersToPing.has(discordId)) {
       //     usersToPing.delete(discordId);
       //   } else if below
+
       if (playerData.inClan === false) { // && playerData.level > 25
         if (!usersNotPing.has(discordId)) {
+          if (users[discordId] && users[discordId].movementPingsDelay === true && delayPings === true) {
+            console.log("Skipping discordId to usersToPing: ", discordId);
+            continue;
+          }
           console.log("Adding discordId to usersToPing: ", discordId);
           usersToPing.add(discordId);
         }
@@ -107,7 +124,7 @@ module.exports = {
     let playerPings1 = `**You have not joined \`${clanData.name}\` yet, please join:** `;
     let playerPings2 = ""; // list of players
     if (pingMissing === true && usersToPing.size > 0) {
-      usersToPing.forEach(discordId => {
+      usersToPing.forEach(async discordId => {
         if (discordId) {
           playerPings2 += `<@${discordId}> `
         }
@@ -137,7 +154,6 @@ module.exports = {
         let embed = new EmbedBuilder()
           .setColor('#00FF00') // Green color for success
           .setDescription(`## [Click here to join ${clanInfo.clanName}](<${clanInfo.clanLink}>)\n-# Expires: <t:${clanInfo.expiryTime}:R>`) // Make the message bold
-        console.log(membersInClanCount, members.length);
         if (membersInClanCount === members.length) {
           embed.setFooter({ text: 'All members in this channel have joined!' })
         }
@@ -195,4 +211,29 @@ function buildEmbedsFromLines(lines, maxLen) {
   }
   if (current) embeds.push(current);
   return embeds;
+}
+
+function getDayAndHour(timezone) {
+  // Create a new Date object
+  const date = new Date();
+
+  // Use Intl.DateTimeFormat to format the date for the specified timezone
+  const options = { timeZone: timezone, weekday: 'long', hour: 'numeric', hour12: false };
+  const formatter = new Intl.DateTimeFormat('en-US', options);
+
+  // Format the date and extract the parts
+  const parts = formatter.formatToParts(date);
+  const day = parts.find(part => part.type === 'weekday').value;
+  const hour = parts.find(part => part.type === 'hour').value;
+
+  return { day, hour };
+}
+
+function showPingDelay(playertag, discordIds, users, delay) {
+  let discordId = discordIds[playertag].discordId;
+  if (users[discordId] && users[discordId].movementPingsDelay === true && delay === true) {
+    return "🕒";
+  }
+  return "";
+
 }
