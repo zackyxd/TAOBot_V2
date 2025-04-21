@@ -58,8 +58,12 @@ module.exports = {
       }
 
       let clan = await API.getClan(clantag);
-      if (clan?.clanWarTrophies >= 5000) {
-        await interaction.editReply({ embeds: [createExistEmbed(`Cannot remove roles of clans above 5k war trophies @hahn`)] })
+      // if (clan?.clanWarTrophies >= 5000) {
+      //   await interaction.editReply({ embeds: [createExistEmbed(`Cannot remove roles of clans above 5k war trophies @hahn`)] })
+      //   return;
+      // }
+      if (clan.tag === "#V2GQU") {
+        await interaction.editReply({ embeds: [createExistEmbed(`Sorry, the stupid 🐔 doesn't want his e-babies to lose their COCK role, so cannot clear this clan.`)] })
         return;
       }
 
@@ -89,10 +93,27 @@ module.exports = {
         await interaction.editReply({ embeds: [createExistEmbed(`There were no members with the <@&${roleToRemove}> role that were not in the clan.`)] })
         return;
       }
-      let messageToSend = `Removed ${removeRoles} members that had <@&${roleToRemove}> role and weren't in the clan.\n Member(s) removed: `
-      let formattedMembersPing = membersPing.map(id => `<@${id}>`).join(', ');
-      messageToSend += formattedMembersPing
-      await interaction.editReply({ embeds: [createSuccessEmbed(messageToSend)] });
+      let messageToSend = `Removed ${removeRoles} members that had <@&${roleToRemove}> role and weren't in the clan.\n Member(s) removed: `;
+      let formattedMembersPing = membersPing.map(id => `<@${id}>`);
+      const maxMessageLength = 2000; // Discord's message length limit
+      let currentMessage = messageToSend;
+
+      for (const ping of formattedMembersPing) {
+        // Add the current ping to the message, but check if it exceeds the max length
+        if ((currentMessage + ping + ", ").length > maxMessageLength) {
+          // Send the current message and reset it
+          await interaction.followUp({ embeds: [createSuccessEmbed(currentMessage)] });
+          currentMessage = ""; // Reset the message
+        }
+        // Add the ping to the current message
+        currentMessage += `${ping}, `;
+      }
+
+      // If there's any remaining message to send, send it
+      if (currentMessage.length > 0) {
+        await interaction.followUp({ embeds: [createSuccessEmbed(currentMessage)] });
+      }
+
     }
   }
 }

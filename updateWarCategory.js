@@ -4,8 +4,8 @@ const path = require('path');
 const fs = require('fs');
 
 // Used to do automatic stats. Run when new clans wanted to add to it. 
-async function updateWarCategory() {
-  const dbPath = path.join(__dirname, `./guildData/722956243261456536.sqlite`);
+async function updateWarCategory(guildId) {
+  const dbPath = path.join(__dirname, `./guildData/${guildId}.sqlite`);
   const db = new QuickDB({ filePath: dbPath });
   const clans = await db.get('clans') || {};
 
@@ -13,10 +13,19 @@ async function updateWarCategory() {
     const abbreviation = clanInfo.abbreviation;
     // Fetch war trophies using the API
     let warTrophies;
-    let clan;
+    let previousTrophies;
+    let currentTrophies;
+    let findClan;
     try {
-      clan = await API.getClan(clanTag);
-      warTrophies = clan.clanWarTrophies;
+      let previousClan = await API.getRiverRaceLog(clanTag); // Check river race log for how many trophies they were at last war
+      const standings = previousClan.items[0].standings;
+      findClan = standings.find(standing => standing.clan.tag === clanTag);
+      previousTrophies = findClan.trophyChange;
+
+      let currentClan = await API.getClan(clanTag);
+      currentTrophies = currentClan.clanWarTrophies;
+
+      warTrophies = currentTrophies - previousTrophies;
     } catch (error) {
       console.log(`Error fetching war trophies for clan ${abbreviation}:`, error);
       continue;
@@ -35,13 +44,10 @@ async function updateWarCategory() {
     // Update the clan information with the new warCategory
     clanInfo.warCategory = warCategory;
     await db.set(`clans.${clanTag}`, clanInfo);
-    console.log(`Set ${clan.name} war category to ${warCategory}`);
+    console.log(`Set ${findClan.clan.name} war category to ${warCategory}`);
   }
 }
 
-// Call the function to update the war category for all clans
-updateWarCategory().then(() => {
-  console.log('War categories updated successfully.');
-}).catch(error => {
-  console.log('Error updating war categories:', error);
-});
+module.exports = {
+  updateWarCategory
+}

@@ -79,7 +79,7 @@ module.exports = {
 
     const currentTime = Math.floor(Date.now() / 1000); // Current Unix time in seconds
     const threeDaysInSeconds = 3 * 24 * 60 * 60; // Seconds in 3 days
-    // const threeDaysInSeconds = 5; // 5 seconds
+    // const threeDaysInSeconds = 15; // 5 seconds
     const expiryTime = currentTime + threeDaysInSeconds;
     // console.log(expiryTime);
 

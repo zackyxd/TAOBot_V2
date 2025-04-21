@@ -21,7 +21,8 @@ const checkRace = async (client) => {
     timezone: 'America/Phoenix'
   });
 
-  cron.schedule('0-55 3 * * 4,5,6,7,1', async function () {
+  cron.schedule('0-59 3 * * 4,5,6,7,1', async function () {
+    // cron.schedule('21-59 4 * * 4,5,6,7,1', async function () {
     // cron.schedule('0-59 8 * * *', async function () {
     // cron.schedule('*/5 * * * * *', async function () {
     // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
@@ -32,10 +33,10 @@ const checkRace = async (client) => {
     timezone: 'America/Phoenix'
   });
 
-  cron.schedule('0 4 * * *', async function () {
+  cron.schedule('0 5 * * *', async function () {
     client.guilds.cache.forEach(async (guild) => {
       const db = await API.getDb(guild.id);
-      const clans = await db.get('clanTest');
+      const clans = await db.get('warResetRaceData');
       if (!clans) return;
 
       for (const clantag in clans) {
@@ -45,14 +46,30 @@ const checkRace = async (client) => {
           clans[clantag] = clanInfo;
         }
       }
-      await db.set('clanTest', clans)
+      await db.set('warResetRaceData', clans)
     })
     console.log("Finished resetting all posted races to false posted");
   }, {
     scheduled: true,
     timezone: 'America/Phoenix'
   })
+
+  cron.schedule('0 2 * * 4', async function () {
+    client.guilds.cache.forEach(async (guild) => {
+      const db = await API.getDb(guild.id);
+      const clans = await db.get('warResetRaceData');
+      if (!clans) return;
+
+      await db.set('warResetRaceData', {})
+    })
+    console.log("Deleted race data");
+  }, {
+    scheduled: true,
+    timezone: 'America/Phoenix'
+  })
 }
+
+
 
 // Post the race embeds
 async function postRace(client) {
@@ -530,7 +547,7 @@ async function pinRace(db, guildId, raceData, warScoreMessage, attacksLeftMessag
     clanInfo.days = days;
   }
 
-  function createPinnedMessage(clan, days) {
+  function createPinnedMessage(clan, days, dayType) {
     let description = "";
     for (const day in days) {
       description += `${days[day]}\n`;
@@ -540,11 +557,12 @@ async function pinRace(db, guildId, raceData, warScoreMessage, attacksLeftMessag
       .setURL(`https://royaleapi.com/clan/${(clan.clantag).substring(1)}/war/race`)
       .setDescription(description)
       .setColor('Purple')
-      .setAuthor({ name: `War Week ${clanInfo.week}` })
+      .setAuthor({ name: `${dayType}` })
       .setThumbnail(process.env.BOT_IMAGE)
   }
 
   let pinnedMessage;
+  let dayType = raceData.periodType === "warDay" ? `War Week ${week}` : `Colosseum`;
   if (pinData && day >= pinData.day) { // Edit if race data day is higher.
     let channelToSendTo = await client.channels.fetch(warScoreMessage.channel.id);
 
@@ -553,12 +571,12 @@ async function pinRace(db, guildId, raceData, warScoreMessage, attacksLeftMessag
     }
     catch (error) { // If message doesn't exist, create new one and send it. 
       let channelToSendTo = await client.channels.fetch(warScoreMessage.channel.id);
-      pinnedMessage = await channelToSendTo.send({ embeds: [createPinnedMessage(clan, days)] });
+      pinnedMessage = await channelToSendTo.send({ embeds: [createPinnedMessage(clan, days, dayType)] });
       pinnedMessage.pin();
       clanInfo.messageId = pinnedMessage.id;
     }
 
-    await pinnedMessage.edit({ embeds: [createPinnedMessage(clan, days)] });
+    await pinnedMessage.edit({ embeds: [createPinnedMessage(clan, days, dayType)] });
     if (pinnedMessage.pinned === false) {
       pinnedMessage.pin();
     }
@@ -570,13 +588,13 @@ async function pinRace(db, guildId, raceData, warScoreMessage, attacksLeftMessag
       pinnedMessage = await channelToSendTo.messages.fetch(pinData.messageId);
       pinnedMessage.unpin();
 
-      pinnedMessage = await channelToSendTo.send({ embeds: [createPinnedMessage(clan, days)] });
+      pinnedMessage = await channelToSendTo.send({ embeds: [createPinnedMessage(clan, days, dayType)] });
       pinnedMessage.pin();
       clanInfo.messageId = pinnedMessage.id;
     }
     catch (error) { // If pinned message is deleted, just create new one.
       let channelToSendTo = await client.channels.fetch(warScoreMessage.channel.id);
-      pinnedMessage = await channelToSendTo.send({ embeds: [createPinnedMessage(clan, days)] });
+      pinnedMessage = await channelToSendTo.send({ embeds: [createPinnedMessage(clan, days, dayType)] });
       pinnedMessage.pin();
       clanInfo.messageId = pinnedMessage.id;
     }
@@ -584,7 +602,7 @@ async function pinRace(db, guildId, raceData, warScoreMessage, attacksLeftMessag
   }
   else { // Post for first time.
     let channelToSendTo = await client.channels.fetch(warScoreMessage.channel.id);
-    pinnedMessage = await channelToSendTo.send({ embeds: [createPinnedMessage(clan, days)] });
+    pinnedMessage = await channelToSendTo.send({ embeds: [createPinnedMessage(clan, days, dayType)] });
     pinnedMessage.pin();
     clanInfo.messageId = pinnedMessage.id;
   }

@@ -31,18 +31,42 @@ module.exports = {
     if (interaction.commandName !== "average") return;
     await interaction.deferReply();
 
-    const user = interaction.options.getMember("user");
+    let user;
+    let discordId;
+
+    try {
+      // Attempt to get the member from the guild
+      user = interaction.options.getMember("user");
+      if (user) {
+        discordId = user.user.id; // Member found
+      } else {
+        // Fallback to fetching the user directly using the "user" option
+        const userOption = interaction.options.getUser("user");
+        if (userOption) {
+          discordId = userOption.id; // Use the ID of the resolved user
+          user = await interaction.client.users.fetch(discordId);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch user or member:", error);
+      await interaction.editReply("An error occurred while retrieving the user. Please ensure the user or ID is valid.");
+      return;
+    }
+
+    if (!user) {
+      await interaction.editReply("Could not find the specified user. Please ensure the user or ID is valid.");
+      return;
+    }
     let warType = interaction.options?.getString('war-type');
     const dbPath = path.join(__dirname, `../../../guildData/${interaction.guild.id}.sqlite`);
     const db = new QuickDB({ filePath: dbPath });
-    let stats = await grabStatsData(db, user.user.id, warType);
-    console.log(stats);
+    let stats = await grabStatsData(db, discordId, warType);
     if (stats.notLinked === true) {
-      await interaction.editReply({ embeds: [createErrorEmbed(`${user} has no accounts linked.`)] });
+      await interaction.editReply({ embeds: [createErrorEmbed(`<@${discordId}> has no accounts linked.`)] });
       return;
     }
     if (stats.length === 0) {
-      await interaction.editReply({ embeds: [createErrorEmbed(`${user} has no ${warType} scores yet.`)] });
+      await interaction.editReply({ embeds: [createErrorEmbed(`<@${discordId}> has no ${warType} scores yet.`)] });
       return;
     }
 
@@ -60,7 +84,7 @@ module.exports = {
           }))
         )
         .setColor("Purple")
-        .setFooter({ text: `${user.nickname || user.user.username}`, iconURL: user.user.displayAvatarURL() })
+        .setFooter({ text: `${user?.nickname || user?.user?.username || user.username || discordId}`, iconURL: user?.user?.displayAvatarURL() || user.displayAvatarURL() || null })
       // await interaction.editReply({ embeds: [embed] })
       return embed;
     }));
@@ -72,9 +96,9 @@ module.exports = {
     })
 
     const summaryEmbed = new EmbedBuilder()
-      .setTitle(`${user.nickname || user.user.username} Stats (${warType})`)
+      .setTitle(`${user?.nickname || user?.user?.username || user.username || discordId} Stats (${warType})`)
       .setDescription(allNames)
-      .setFooter({ text: `${user.nickname || user.user.username}`, iconURL: user.user.displayAvatarURL() })
+      .setFooter({ text: `${user?.nickname || user?.user?.username || user.username || discordId}`, iconURL: user?.user?.displayAvatarURL() || user.displayAvatarURL() || null })
       .setColor("Purple")
       .setThumbnail(process.env.BOT_IMAGE);
 

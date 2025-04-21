@@ -9,7 +9,7 @@ const { channel } = require('diagnostics_channel');
 
 module.exports = {
   name: Events.MessageCreate,
-  eventKey: 'disable',
+  // eventKey: 'disable',
   async execute(message) {
     if (message.author.bot) return;
     const member = message.guild.members.cache.get(message.author.id);

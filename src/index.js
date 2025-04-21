@@ -67,7 +67,9 @@ loadEvents();
 
     //await mongoose.connect(process.env.MONGODB_URI);
     //console.log("Connected to mongoDB.");
-    client.login(process.env.TOKEN);
+
+    client.login(process.env.DISCORD_TOKEN);
+
   }
   catch (error) {
     console.log(`Error: ${error}`);

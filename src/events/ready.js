@@ -96,6 +96,19 @@ module.exports = {
     // }, 2100000)
 
 
+    setInterval(async () => {
+      await editOldClanLinks(client);
+    }, 90000);
+
+
+    // Send daily chess match for Elite vs Hahn
+    cron.schedule('0 12 * * *', async function () {
+      dailyChess(client);
+    }, {
+      scheduled: true,
+      timezone: 'America/Phoenix'
+    });
+
   }
 }
 
@@ -152,4 +165,120 @@ async function resetPings(client) {
     await db.set(`users`, users);
   });
   console.log("Player pings set to false");
+}
+
+
+async function dailyChess(client) {
+  client.guilds.cache.forEach(async (guild) => {
+    const dbPath = API.findFileUpwards(__dirname, `guildData/${guild.id}.sqlite`);
+    const db = new QuickDB({ filePath: dbPath, timeout: 5000 });
+    const users = await db.get(`users`);
+    if (!users) return;
+
+    const chessData = await db.get(`chess`);
+    console.log(chessData);
+    if (chessData) {
+      try {
+        let channelId = chessData.channelId;
+        let messageId = chessData.messageId;
+        let channel = await client.channels.fetch(channelId);
+        let message = await channel.messages.fetch(messageId);
+        message.delete();
+      } catch (error) {
+        console.log(error);
+        await db.delete('chess');
+      }
+    }
+
+    let hahnId = "488811572320403457"
+    let eliteId = "139545336652890112"
+    let chessChannelId = "1326037317986811915"
+
+    // let hahnId = "272201620446511104"
+    // let eliteId = "955088215281385492"
+    // let chessChannelId = "1276747740562456617"
+    let channelToSend = await client.channels.fetch(chessChannelId);
+    if (!channelToSend) {
+      console.log("Could not fetch channel to send chess message");
+      return;
+    }
+    let hahn = await client.users.fetch(hahnId);
+    let elite = await client.users.fetch(eliteId);
+    if (!hahn || !elite) {
+      console.log("Could not fetch hahn or elite");
+      return;
+    }
+
+    let embed = new EmbedBuilder()
+      .setTitle("Daily Chess")
+      .setDescription(`Have you played your daily chess yet?`)
+      .setThumbnail(`https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/ChessSet.jpg/250px-ChessSet.jpg`)
+
+    let message = await channelToSend.send({ embeds: [embed], content: `<@${hahnId}> <@${eliteId}>` });
+    await db.set(`chess`, {
+      channelId: channelToSend.id,
+      messageId: message.id
+    });
+
+
+  })
+}
+
+
+async function editOldClanLinks(client) {
+  client.guilds.cache.forEach(async (guild) => {
+    const db = await API.getDb(guild.id);
+    const clanLinkTracker = await db.get(`clanLinkTracker`);
+    if (!clanLinkTracker) return;
+    const currentTime = Math.floor(Date.now() / 1000); // Current Unix time in seconds
+    for (const expiry in clanLinkTracker) {
+      if (currentTime < expiry) continue;
+      let messages = clanLinkTracker[expiry];
+      for (const messageKey in messages) {
+        console.log(messageKey);
+        const messageData = messages[messageKey]; // Access individual message data
+        const { messageId, channelId } = messageData;
+
+        let channel, message;
+        try {
+          channel = await client.channels.fetch(channelId);
+          message = await channel.messages.fetch(messageId);
+          // messageMini = await channel.messages.fetch(messageIdMini);
+        } catch (error) {
+          console.log("Couldn't fetch clan links message, delete from db.");
+          delete messages[messageKey];
+          // Update the database
+          await db.set(`clanLinkTracker.${expiry}`, messages);
+
+          // Optionally break if all messages for the expiry are deleted
+          if (Object.keys(messages).length === 0) {
+            console.log(`No more messages left under expiry ${expiry}. Deleting expiry.`);
+            await db.delete(`clanLinkTracker.${expiry}`);
+          }
+          continue;
+        }
+
+        // If messages exist, edit with expired
+        let embed = new EmbedBuilder()
+          .setDescription(`## ${messageData.clanName} link has expired`)
+          .setColor('#FE9900')
+
+        let editedMessage = `**This link for ${messageData.clanName} has expired.**`;
+
+        message.edit({ embeds: [embed], content: editedMessage });
+
+
+        // Delete from db
+        delete messages[messageKey];
+        // Update the database
+        await db.set(`clanLinkTracker.${expiry}`, messages);
+
+        if (Object.keys(messages).length === 0) {
+          console.log(`No more messages left under expiry ${expiry}. Deleting expiry.`);
+          await db.delete(`clanLinkTracker.${expiry}`);
+        }
+      }
+
+    }
+  });
 }

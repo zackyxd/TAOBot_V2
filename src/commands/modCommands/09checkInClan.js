@@ -27,8 +27,8 @@ module.exports = {
     await interaction.deferReply({ ephemeral: true });
     let abbrev = interaction.options.getString("clan-abbreviation").toLowerCase();
     let pingMissing = interaction.options?.getBoolean('ping-missing') ?? false;
-    const dbPath = path.join(__dirname, `../../../guildData/${interaction.guild.id}.sqlite`);
-    const db = new QuickDB({ filePath: dbPath });
+
+    let db = await API.getDb(interaction.guild.id);
     const clans = await db.get(`clans`) || {};
     if (!clans) {
       await interaction.editReply({ embeds: [createErrorEmbed(`Error grabbing clan data, likely no clans in server.`)] });
@@ -160,8 +160,11 @@ module.exports = {
         pingMessage += `\n-# Sent by ${interaction.user.username}`
         // .setFooter({ text: convertUnixToTime(clanInfo.expiryTime) })
         await interaction.channel.send(pingMessage);
-        await interaction.channel.send({ embeds: [embed] });
-        await interaction.channel.send(`-# [Click this to join ${clanInfo.clanName}](<${clanInfo.clanLink}>) Expires: <t:${clanInfo.expiryTime}:R>`);
+
+        let content = `-# [Click this to join ${clanInfo.clanName}](<${clanInfo.clanLink}>) Expires: <t:${clanInfo.expiryTime}:R>`
+        let linkMessage = await interaction.channel.send({ embeds: [embed], content: content });
+
+        await addClanLinkToDatabase(db, interaction, interaction.channel.id, linkMessage.id, clanInfo);
       }
 
       return;
@@ -236,4 +239,22 @@ function showPingDelay(playertag, discordIds, users, delay) {
   }
   return "";
 
+}
+
+
+async function addClanLinkToDatabase(db, interaction, channelId, messageId, clanInfo) {
+  const memberThatSent = interaction.member?.nickname || interaction.user.username;
+  let expiryTime = clanInfo.expiryTime;
+  let clanName = clanInfo.clanName;
+
+  let clanLinkTracker = {
+    'expiryTime': expiryTime,
+    'clanName': clanName,
+    'channelId': channelId,
+    'messageId': messageId,
+    // 'messageIdMini': messageIdMini,
+    'memberThatSent': memberThatSent,
+  }
+
+  await db.set(`clanLinkTracker.${expiryTime}.${messageId}`, clanLinkTracker)
 }

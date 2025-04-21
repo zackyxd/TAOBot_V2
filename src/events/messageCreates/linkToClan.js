@@ -12,18 +12,20 @@ module.exports = {
     if (message.author.bot) return;
 
     const member = message.guild.members.cache.get(message.author.id);
-    if (!member.permissions.has([PermissionsBitField.Flags.MuteMembers])) return;
+    if (!member.permissions.has([PermissionsBitField.Flags.MuteMembers])) {
+      return;
+    }
     if (!(message.content).includes('!')) return;
 
     // console.log(message.content);
     messageQueue.push(message);
     if (!isProcessing) {
-      await processQueue();
+      await processQueue(member);
     }
   }
 }
 
-async function processQueue() {
+async function processQueue(member) {
   isProcessing = true;
 
   while (messageQueue.length > 0) {
@@ -79,6 +81,11 @@ async function processQueue() {
       continue;
     }
 
+    // if (!member.permissions.has([PermissionsBitField.Flags.KickMembers])) {
+    //   await member.send({ embeds: [createExistEmbed(`Hey! Coleaders are currently disabled from using clan link invites. Please message management if you need to give out a link.`)] });
+    //   continue;
+    // }
+
     let clanInfo = await db.get(`clans.${clantagForClan}`);
     let clanName = clanInfo?.clanName;
     if (!clanInfo) {
@@ -104,8 +111,10 @@ async function processQueue() {
         .setColor('#00FF00') // Green color for success
         .setDescription(`## [Click here to join ${clanName}](<${clanInfo.clanLink}>)\n-# Expires: <t:${clanInfo.expiryTime}:R>`) // Make the message bold
       // .setFooter({ text: convertUnixToTime(clanInfo.expiryTime) })
-      await message.channel.send({ embeds: [embed] });
-      await message.channel.send(`-# [Click this to join ${clanName}](<${clanInfo.clanLink}>) Expires: <t:${clanInfo.expiryTime}:R>`);
+      let content = `-# [Click this to join ${clanName}](<${clanInfo.clanLink}>) Expires: <t:${clanInfo.expiryTime}:R>`
+      let linkMessage = await message.channel.send({ embeds: [embed], content: content });
+      // let linkMessageMini = await message.channel.send(`-# [Click this to join ${clanName}](<${clanInfo.clanLink}>) Expires: <t:${clanInfo.expiryTime}:R>`);
+      await addClanLinkToDatabase(db, member, message.channelId, linkMessage.id, clanInfo);
     }
 
     // if (message.content.trim() === `!${clanAbbrev}link`) {
@@ -120,6 +129,27 @@ async function processQueue() {
   }
   isProcessing = false;
 }
+
+
+async function addClanLinkToDatabase(db, member, channelId, messageId, clanInfo) {
+  const memberThatSent = member?.nickname || member.user.username;
+  let expiryTime = clanInfo.expiryTime;
+  let clanName = clanInfo.clanName;
+
+  let clanLinkTracker = {
+    'expiryTime': expiryTime,
+    'clanName': clanName,
+    'channelId': channelId,
+    'messageId': messageId,
+    // 'messageIdMini': messageIdMini,
+    'memberThatSent': memberThatSent,
+  }
+
+  await db.set(`clanLinkTracker.${expiryTime}.${messageId}`, clanLinkTracker)
+}
+
+
+
 
 function convertUnixToTime(unixTimestamp) {
   const now = Math.floor(Date.now() / 1000);

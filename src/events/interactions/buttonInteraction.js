@@ -152,7 +152,8 @@ module.exports = {
       ]
 
       const [action, clan] = interaction.customId.split(`_`);
-      if (action === 'confirmRoles') {
+
+      if (action === 'confirmRoles' && clan !== "colo") {
         const clans = await db.get('clans') || {};
         const clantag = Object.keys(clans).find(tag => clans[tag].abbreviation === clan);
         const warCategory = clans[clantag]?.warCategory;
@@ -177,7 +178,7 @@ module.exports = {
           const message = await interaction.channel.messages.fetch(interaction.message.id);
           const embed = message.embeds[0];
 
-          const updatedEmbed = new EmbedBuilder(embed).setFooter({ text: `${embed.footer.text.split('|')[0].trim()} | (${confirmationData.count}/2)` })
+          let updatedEmbed = new EmbedBuilder(embed).setFooter({ text: `${embed.footer.text.split('|')[0].trim()} | (${confirmationData.count}/2)` })
           // Edit the message with the updated embed
           await message.edit({ embeds: [updatedEmbed] });
         }
@@ -188,7 +189,7 @@ module.exports = {
         const message = await interaction.channel.messages.fetch(interaction.message.id);
         const embed = message.embeds[0];
 
-        const updatedEmbed = new EmbedBuilder(embed).setFooter({ text: `${embed.footer.text.split('|')[0].trim()} | Sent!` })
+        let updatedEmbed = new EmbedBuilder(embed).setFooter({ text: `${embed.footer.text.split('|')[0].trim()} | Sending...` })
         // Edit the message with the updated embed
         await message.edit({ embeds: [updatedEmbed], components: [] });
 
@@ -207,10 +208,8 @@ module.exports = {
           for (const player of players) {
             try {
               let member = await interaction.guild.members.fetch(player.discordId);
-
               // Check if the member has a higher role
               let hasHigherRole = roles.some(role => member.roles.cache.has(role.id) && role.threshold > player.fameAverage);
-
               if (!hasHigherRole) {
                 // Remove lower roles
                 for (const role of roles) {
@@ -223,7 +222,11 @@ module.exports = {
                 // add role
                 if (!member.roles.cache.has(roleId)) {
                   await member.roles.add(roleId);
-                  memberMentions.push(`<@${player.discordId}>`);
+
+                  // Find the threshold for the earned role
+                  const earnedRole = roles.find(role => role.id === roleId);
+
+                  memberMentions.push(`<@${player.discordId}> ${earnedRole.threshold}+`);
                   console.log(`Assigned role ${roleId} to ${player.playerName}`);
                 }
               }
@@ -231,8 +234,6 @@ module.exports = {
             catch (error) {
               console.log(`Error adding / removing roles`, error);
             }
-
-
           }
         }
 
@@ -273,13 +274,151 @@ module.exports = {
           const playerChannel = await interaction.client.channels.fetch(channelId);
           await playerChannel.send({ embeds: [embedForPlayers] });
           if (memberMentions.length > 0) {
-            await playerChannel.send(`Congratulations to the following members for earning new roles:\n${memberMentions.join(', ')}`);
+            await playerChannel.send(`Congratulations to the following members for earning new roles:\n${memberMentions.join('\n')}`);
           }
         } catch (error) {
           console.log("Couldn't send new roles to player channel");
         }
+
+        // Update embed showing in leader channel
+        updatedEmbed = new EmbedBuilder(embed).setFooter({ text: `${embed.footer.text.split('|')[0].trim()} | Sent!` })
+        // Edit the message with the updated embed
+        await message.edit({ embeds: [updatedEmbed], components: [] });
+      }
+
+
+      else if (action === 'confirmRoles' && clan === "colo") {
+
+        const colosseumRoles = [
+          { id: '1361870679364075621', threshold: 3600 }, // My server 3600
+          { id: '1361870471515082772', threshold: 3500 }, // My server 3500
+          { id: '1361870889980788756', threshold: 3400 }, // My server 3400
+
+          // { id: '1214408787306348594', threshold: 3600 },
+          // { id: '1214408358204022805', threshold: 3500 },
+          // { id: '1214198156460429363', threshold: 3400 },
+        ];
+
+        let confirmationData = await db.get(`confirmationData.coloRoles`) || { count: 0, users: [] };
+        if (!confirmationData.users.includes(interaction.user.id)) {
+          confirmationData.count += 1;
+          confirmationData.users.push(interaction.user.id);
+          await db.set(`confirmationData.coloRoles`, confirmationData);
+          // fetch og message
+          const message = await interaction.channel.messages.fetch(interaction.message.id);
+          const embed = message.embeds[0];
+
+          let updatedEmbed = new EmbedBuilder(embed).setFooter({ text: `${embed.footer.text.split('|')[0].trim()} | (${confirmationData.count}/2)` })
+          // Edit the message with the updated embed
+          await message.edit({ embeds: [updatedEmbed] });
+        }
+        if (confirmationData.count < 2) { // TODO
+          return;
+        }
+
+        const message = await interaction.channel.messages.fetch(interaction.message.id);
+        const embed = message.embeds[0];
+
+        let updatedEmbed = new EmbedBuilder(embed).setFooter({ text: `${embed.footer.text.split('|')[0].trim()} | Sending...` })
+        // Edit the message with the updated embed
+        await message.edit({ embeds: [updatedEmbed], components: [] });
+
+
+        const roleGroups = await db.get(`roleAssignments.coloRoles`);
+        if (!roleGroups) {
+          console.log("No role Groups");
+          return;
+        }
+
+
+        let memberMentions = [];
+
+
+        for (const [roleId, players] of Object.entries(roleGroups)) {
+          for (const player of players) {
+            try {
+              let member = await interaction.guild.members.fetch(player.discordId);
+              // Check if the member has a higher role
+              let hasHigherRole = colosseumRoles.some(role => member.roles.cache.has(role.id) && role.threshold > player.lastRaceScore);
+              if (!hasHigherRole) {
+                // Remove lower roles
+                for (const role of colosseumRoles) {
+                  if (role.threshold < player.lastRaceScore && member.roles.cache.has(role.id)) {
+                    await member.roles.remove(role.id);
+                    // console.log("Removed role because has higher");
+                  }
+                }
+
+                // add role
+                if (!member.roles.cache.has(roleId)) {
+                  await member.roles.add(roleId);
+
+                  // Find the threshold for the earned role
+                  const earnedRole = colosseumRoles.find(role => role.id === roleId);
+
+                  memberMentions.push(`<@${player.discordId}> ${earnedRole.threshold}`);
+                  console.log(`Assigned role ${roleId} to ${player.playerName}`);
+                }
+              }
+            }
+            catch (error) {
+              console.log(`Error adding / removing roles`, error);
+            }
+          }
+        }
+
+        // Send the embed to the channels available to the normal players
+        let description = "";
+        for (const [roleId, players] of Object.entries(roleGroups)) {
+          if (players.length > 0) {
+            // sort by fame
+            players.sort((a, b) => b.lastRaceScore - a.lastRaceScore);
+            description += `<@&${roleId}>\n${players.map(player => `<@${player.discordId}> (${player.playerName})`).join(`\n`)}\n\n`;
+          }
+        }
+
+        if (!description) {
+          description += "No new roles earned.";
+        }
+        // const clans = await db.get(`clans`) || {};
+        // const clantag = Object.keys(clans).find(tag => clans[tag].abbreviation === clan);
+
+        let generalChatChannelId = "783029863442415665"; // General chat to send to TODO TAO's gen chat : 783029863442415665
+        try {
+          let rrData = await API.getRiverRaceLog("#9U82JJ0Y");
+          if (rrData) {
+            let firstItem = rrData.items[0];
+            warWeek = `Week ${firstItem.seasonId}-${firstItem.sectionIndex + 1}`;
+          }
+        } catch (error) {
+          console.log("No rr data");
+        }
+        let embedForPlayers = new EmbedBuilder()
+          .setTitle(`5k Colosseum Roles`)
+          .setColor("Purple")
+          .setDescription(description)
+          .setFooter({ text: `Colosseum ${warWeek}` });
+
+        try {
+          const playerChannel = await interaction.client.channels.fetch(generalChatChannelId);
+          await playerChannel.send({ embeds: [embedForPlayers] });
+          if (memberMentions.length > 0) {
+            await playerChannel.send(`Congratulations to the following members for earning new 5k colosseum roles! <:giantready:1361883518333878424>\n${memberMentions.join('\n')}`);
+          }
+        } catch (error) {
+          console.log("Couldn't send new roles to player channel");
+        }
+
+        // Update embed showing in leader channel
+        updatedEmbed = new EmbedBuilder(embed).setFooter({ text: `${embed.footer.text.split('|')[0].trim()} | Sent!` })
+        // Edit the message with the updated embed
+        await message.edit({ embeds: [updatedEmbed], components: [] });
+
+
       }
     }
+
+
 
     if (interaction.customId.startsWith(`confirmDeleteChannel`)) {
       await interaction.deferUpdate();
