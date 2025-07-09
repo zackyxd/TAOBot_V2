@@ -6,12 +6,13 @@ const fs = require('fs');
 const { createSuccessEmbed, createExistEmbed, createErrorEmbed, createMaintenanceEmbed } = require('../../utilities/embedUtility.js');
 const cron = require('node-cron');
 const { channel } = require("diagnostics_channel");
+const { findAttacks } = require('../dataUpdates/findPlayerAttacksInClans.js');
 require('dotenv/config');
 
 
 const checkRace = async (client) => {
   // cron.schedule('15-59 2 * * *', async function () {
-  cron.schedule('15-59 2 * * 4,5,6,7,1', async function () {
+  cron.schedule('15-59/2 2 * * 4,5,6,7,1', async function () {
     // cron.schedule('*/10 * * * * *', async function () {
     // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
     // Your code here
@@ -21,10 +22,8 @@ const checkRace = async (client) => {
     timezone: 'America/Phoenix'
   });
 
-  cron.schedule('0-59 3 * * 4,5,6,7,1', async function () {
-    // cron.schedule('21-59 4 * * 4,5,6,7,1', async function () {
-    // cron.schedule('0-59 8 * * *', async function () {
-    // cron.schedule('*/5 * * * * *', async function () {
+  cron.schedule('0-59/2 3 * * 4,5,6,7,1', async function () {
+    // cron.schedule('*/20 * * * * *', async function () {
     // console.log("Cron job running every minute between 2:15 AM and 2:59 AM");
     // Your code here
     postRace(client);
@@ -74,10 +73,12 @@ const checkRace = async (client) => {
 // Post the race embeds
 async function postRace(client) {
   client.guilds.cache.forEach(async (guild) => {
+
     const dbPath = API.findFileUpwards(__dirname, `guildData/${guild.id}.sqlite`);
     const db = new QuickDB({ filePath: dbPath, timeout: 5000 });
     const clans = await db.get(`clans`);
     if (!clans) return;
+    // await findAttacks(client); // Update all player attacks in database
 
     for (const clantag in clans) {
       const channelId = await db.get(`clans.${clantag}.importantChannel`);
@@ -115,14 +116,14 @@ async function postRace(client) {
           console.log("War Day");
           let allClans = getAllClans(oldRaceInfo);
           warScoresEmbed = await outputWarDayInfo(allClans, clantag, oldRaceInfo.periodIndex, oldRaceInfo.sectionIndex, oldRaceInfo.clanName);
-          attacksLeftEmbed = await remainingAttacks(oldRaceInfo);
+          attacksLeftEmbed = await remainingAttacks(oldRaceInfo, db);
         }
         else if (raceType === 2) {
           // Colosseum Day
           console.log("Colosseum Day");
           let allClans = getAllClans(oldRaceInfo);
           warScoresEmbed = await outputColoInfo(allClans, clantag, oldRaceInfo.periodIndex, oldRaceInfo.clanName);
-          attacksLeftEmbed = await remainingAttacks(oldRaceInfo);
+          attacksLeftEmbed = await remainingAttacks(oldRaceInfo, db);
         }
         else {
           // Training Day
@@ -649,31 +650,61 @@ async function main() {
 
 // main();
 
-async function remainingAttacks(data) {
+// Data is the oldRaceInfo (Current river race), db is the database
+async function remainingAttacks(data, db) {
   // console.log(data);
   let clan = data.clans.find(clan => clan.clantag === data.clantag);
+  let day = (data.periodIndex % 7) - 2; // Get day for the playertag day
   console.log("Found the clan:", clan.clanName)
+
+  let playertags = await db.get(`playertags`);
+  // console.log("playertags:", playertags);
 
   let participants = clan.participants;
   // console.log(participants);
   let clanData = await API.getClan(clan.clantag);
   let membersInClan = {};
   let membersNotInClan = {};
-  let attacksUsed = { 0: [], 1: [], 2: [], 3: [], 4: [] };
+  let attacksUsed = { 0: [], 1: [], 2: [], 3: [], 4: [] }; // Decks used today. 
   for (const member of clanData.memberList) {
-    membersInClan[member.tag] = { name: member.name, role: member.role };
+    membersInClan[member.tag] = { name: member.name, role: member.role }; // Decks used today
   }
+
+  let memberUsedInDifferentClan = {};
+  let didntUseAllAttacks = {};
+  let stopsignInfo = false;
+  let handshakeInfo = false;
 
   for (const participant of participants) {
     // console.log(participant);
     if (participant.decksUsedToday >= 0) {
       if (membersInClan[participant.tag]) {
-        membersInClan[participant.tag].decksUsedToday = participant.decksUsedToday;
-        attacksUsed[participant.decksUsedToday].push(participant.playerName);
+        // console.log(playertags[participant.tag][`day${day}DecksUsed`]);
+        // membersInClan[participant.tag].decksUsedToday = participant.decksUsedToday;
+        let decksUsedToday = playertags?.[participant.tag]?.[`day${day}DecksUsed`];
+        if (!decksUsedToday) {
+          decksUsedToday = participant.decksUsedToday;
+        }
+        if (decksUsedToday === participant.decksUsedToday) { // If api decks matches database, add as normal.
+          attacksUsed[decksUsedToday].push(participant.playerName);
+        }
+        else if (decksUsedToday === 4 && participant.decksUsedToday === 0) { // Else if 0 attacks in api, but 4 on database, 4 in different clan
+          memberUsedInDifferentClan[participant.tag] = { name: participant.playerName, decksUsedToday: playertags[participant.tag][`day${day}DecksUsed`] };
+          handshakeInfo = true;
+        }
+        else if (decksUsedToday < 4) { // Didnt have all attacks
+          attacksUsed[4 - decksUsedToday].push(participant.playerName);
+        }
       }
+
+
       else if (!membersInClan[participant.tag] && participant.decksUsedToday >= 1) {
         let nameWithStar = participant.playerName + ' ❌';
-        membersNotInClan[participant.tag] = { name: nameWithStar, decksUsedToday: participant.decksUsedToday };
+        let decksUsedToday = playertags?.[participant.tag]?.[`day${day}DecksUsed`];
+        if (!decksUsedToday) {
+          decksUsedToday = participant.decksUsedToday;
+        }
+        membersNotInClan[participant.tag] = { name: nameWithStar, decksUsedToday: decksUsedToday };
         attacksUsed[participant.decksUsedToday].push(nameWithStar);
       }
     }
@@ -681,6 +712,18 @@ async function remainingAttacks(data) {
 
   for (let i = 4; i >= 0; i--) {
     attacksUsed[i].sort();
+  }
+
+  let extraInfoText = "";
+  if (Object.keys(memberUsedInDifferentClan).length !== 0 || Object.keys(didntUseAllAttacks).length !== 0) {
+    extraInfoText += `\n**Attention:**\n`;
+    for (const tag in memberUsedInDifferentClan) {
+      extraInfoText += `* ${memberUsedInDifferentClan[tag].name} 🤝\n`; // API showed 4 attacks available, but used in different family clan
+    }
+
+    // for (const tag in didntUseAllAttacks) {
+    //   extraInfoText += `* ${didntUseAllAttacks[tag].name} (-${didntUseAllAttacks[tag].decksLost}) 🛑\n`; // Didnt have all attacks
+    // }
   }
 
   let description = "";
@@ -702,6 +745,10 @@ async function remainingAttacks(data) {
         description += "* " + name + "\n";
       })
     }
+    description += extraInfoText;
+    if (handshakeInfo) description += "\n 🤝 Used 4 attacks in diff. family clan"
+    // if (stopsignInfo) description += "\n 🛑 Didn't have all attacks available"
+    if (handshakeInfo || stopsignInfo) description += "\n";
     description += `\n<:peopleLeft:1188128630270861492> ${data.playersRemaining}\n<:decksLeft:1187752640508088370> ${200 - data.attacks}`
   }
   else {
@@ -752,6 +799,8 @@ async function remainingAttacks(data) {
   return embed;
 
 }
+
+
 
 // Escape markdown issues
 function escapeMarkdown(text) {

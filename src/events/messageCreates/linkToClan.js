@@ -107,14 +107,16 @@ async function processQueue(member) {
       await message.channel.send({ embeds: [createErrorEmbed(`The link for \`${clanName}\` is currently expired. Please generate a new invite.`)] });
     }
     if (clanInfo && clanInfo.clanLink && clanInfo.alreadyExpired === 0) {
+      let clan = await API.getClan(clanInfo.clantag);
+      let clanMemberCount = clan.members;
       let embed = new EmbedBuilder()
         .setColor('#00FF00') // Green color for success
-        .setDescription(`## [Click here to join ${clanName}](<${clanInfo.clanLink}>)\n-# Expires: <t:${clanInfo.expiryTime}:R>`) // Make the message bold
+        .setDescription(`## [Click here to join ${clanName}](<${clanInfo.clanLink}>)\n-# Expires: <t:${clanInfo.expiryTime}:R> | ${clanMemberCount}/50`) // Make the message bold
       // .setFooter({ text: convertUnixToTime(clanInfo.expiryTime) })
-      let content = `-# [Click this to join ${clanName}](<${clanInfo.clanLink}>) Expires: <t:${clanInfo.expiryTime}:R>`
+      let content = `-# [Click this to join ${clanName}](<${clanInfo.clanLink}>) Expires: <t:${clanInfo.expiryTime}:R> | ${clanMemberCount}/50`;
       let linkMessage = await message.channel.send({ embeds: [embed], content: content });
       // let linkMessageMini = await message.channel.send(`-# [Click this to join ${clanName}](<${clanInfo.clanLink}>) Expires: <t:${clanInfo.expiryTime}:R>`);
-      await addClanLinkToDatabase(db, member, message.channelId, linkMessage.id, clanInfo);
+      await addClanLinkToDatabase(db, member, message.channelId, linkMessage.id, clanInfo, clanMemberCount);
     }
 
     // if (message.content.trim() === `!${clanAbbrev}link`) {
@@ -131,22 +133,41 @@ async function processQueue(member) {
 }
 
 
-async function addClanLinkToDatabase(db, member, channelId, messageId, clanInfo) {
+async function addClanLinkToDatabase(db, member, channelId, messageId, clanInfo, clanMemberCount) {
   const memberThatSent = member?.nickname || member.user.username;
-  let expiryTime = clanInfo.expiryTime;
-  let clanName = clanInfo.clanName;
+  const expiryTime = clanInfo.expiryTime;
+  const clanName = clanInfo.clanName;
+  const clantag = clanInfo.clantag;
 
-  let clanLinkTracker = {
-    'expiryTime': expiryTime,
-    'clanName': clanName,
-    'channelId': channelId,
-    'messageId': messageId,
-    // 'messageIdMini': messageIdMini,
-    'memberThatSent': memberThatSent,
+  // Create the object for the current messageId
+  const messageData = {
+    channelId,
+    clanName,
+    expiryTime,
+    memberThatSent,
+    messageId,
+  };
+
+  try {
+    // Retrieve the existing data for this expiry time
+    const existingData = await db.get(`clanLinkTracker2.${expiryTime}`) || {};
+
+    // Ensure there is a structure under the clantag and add the messageId
+    if (!existingData[clantag]) {
+      existingData[clantag] = {};
+    }
+    existingData[clantag][messageId] = messageData;
+    existingData[clantag].clanMembers = clanMemberCount
+    // Save the updated structure back to the database
+    await db.set(`clanLinkTracker2.${expiryTime}`, existingData);
+
+  } catch (error) {
+    console.error("Error saving to database:", error);
+    let errorChannel = await member.guild.channels.fetch('1199157863344517180'); // Replace with your error channel ID
+    await errorChannel.send(`Error saving to db: ${error.message}\n${memberThatSent}, ${clantag}, https://discord.com/channels/722956243261456536/${channelId}/${messageId}`);
   }
-
-  await db.set(`clanLinkTracker.${expiryTime}.${messageId}`, clanLinkTracker)
 }
+
 
 
 

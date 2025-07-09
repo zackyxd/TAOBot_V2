@@ -54,9 +54,9 @@ async function processMessage(message) {
     if (message.mentions.roles.has(replaceMeRoleId)) {
       const member = message.guild.members.cache.get(discordId);
       try { // <-- Added try block
-        if (!member.permissions.has([PermissionsBitField.Flags.MuteMembers])) {
-          await message.react('⚠️');
-        }
+        // if (!member.permissions.has([PermissionsBitField.Flags.MuteMembers])) {
+        //   await message.react('⚠️');
+        // }
 
         const userPlayerTags = await db.get(`users.${discordId}.playertags`) || [];
         for (const playertag of userPlayerTags) {
@@ -102,7 +102,16 @@ async function processMessage(message) {
             });
           }
         }
-        await db.set(`users.${discordId}.replace-me`, true);
+        // replace-me embed
+        if (!member.permissions.has([PermissionsBitField.Flags.MuteMembers]) && (await db.get(`users.${discordId}.replace-me`) === false || await db.get(`users.${discordId}.replace-me`) === undefined)) {
+          await db.set(`users.${discordId}.replace-me`, true);
+          await message.react('⚠️');
+          embed = new EmbedBuilder()
+            .setColor('Green')
+            .setDescription('**⚠️ You have pinged to be replaced!⚠️\nPlease leave the clan so we have space to cover your attacks.**')
+          await message.reply({ embeds: [embed] });
+        }
+
       } catch (error) { // <-- Added catch block
         console.log(error);
         await message.channel.send({ embeds: [createErrorEmbed(`Error with reacting to Replace Me ping by <@${discordId}>`)] });

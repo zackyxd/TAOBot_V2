@@ -290,13 +290,13 @@ module.exports = {
       else if (action === 'confirmRoles' && clan === "colo") {
 
         const colosseumRoles = [
-          { id: '1361870679364075621', threshold: 3600 }, // My server 3600
-          { id: '1361870471515082772', threshold: 3500 }, // My server 3500
-          { id: '1361870889980788756', threshold: 3400 }, // My server 3400
+          // { id: '1361870679364075621', threshold: 3600 }, // My server 3600
+          // { id: '1361870471515082772', threshold: 3500 }, // My server 3500
+          // { id: '1361870889980788756', threshold: 3400 }, // My server 3400
 
-          // { id: '1214408787306348594', threshold: 3600 },
-          // { id: '1214408358204022805', threshold: 3500 },
-          // { id: '1214198156460429363', threshold: 3400 },
+          { id: '1214408787306348594', threshold: 3600 },
+          { id: '1214408358204022805', threshold: 3500 },
+          { id: '1214198156460429363', threshold: 3400 },
         ];
 
         let confirmationData = await db.get(`confirmationData.coloRoles`) || { count: 0, users: [] };
@@ -383,7 +383,7 @@ module.exports = {
         // const clans = await db.get(`clans`) || {};
         // const clantag = Object.keys(clans).find(tag => clans[tag].abbreviation === clan);
 
-        let generalChatChannelId = "783029863442415665"; // General chat to send to TODO TAO's gen chat : 783029863442415665
+        let generalChatChannelId = "1299934902942306316"; // 5k war announcement channel
         try {
           let rrData = await API.getRiverRaceLog("#9U82JJ0Y");
           if (rrData) {

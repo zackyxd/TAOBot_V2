@@ -35,7 +35,7 @@ const updateClanInvites = async (client) => {
     for (const clantag in clans) {
       const clanData = await db.get(`clanData.${clantag}`); // ingame data 
       const clanInfo = await db.get(`clans.${clantag}`); // db data
-      // console.log(clanData);
+      // console.log(clanInfo.clanName, clanInfo.expiryTime, clanInfo.expiryTime, currentTime);
       if (clanInfo.expiryTime && clanInfo.expiryTime <= currentTime) {
         expiredClans.push({ clantag, ...clanData, ...clanInfo });
         if (channel && clanInfo.alreadyExpired === 0) {
@@ -57,7 +57,8 @@ const updateClanInvites = async (client) => {
       return b.clanWarTrophies - a.clanWarTrophies;
     });
 
-    // console.log("After sorting nonExpiredClans:", nonExpiredClans.map(clan => clan.clanWarTrophies));
+
+    // console.log("After sorting nonExpiredClans:", nonExpiredClans.map(clan => clan.clanName));
 
     // console.log("After sorting expiredClans:", expiredClans.map(clan => clan.clanWarTrophies));
     expiredClans.sort((a, b) => {
@@ -75,7 +76,8 @@ const updateClanInvites = async (client) => {
     else {
       nonExpiredClans.forEach(clan => {
         if (clan.clanLink) {
-          nonExpiredMessageContent += `## [${clan.clanName}](<${clan.clanLink}>): <t:${clan.expiryTime}:R>\n`;
+          // console.log(`Clan: ${(clan.abbreviation).toUpperCase()}, Link: ${clan.clanLink}, Expiry Time: ${clan.expiryTime}`);
+          nonExpiredMessageContent += `## [${(clan.abbreviation).toUpperCase()}](<${clan.clanLink}>): <t:${clan.expiryTime}:R>\n`;
         }
       })
     }

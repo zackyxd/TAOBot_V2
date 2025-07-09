@@ -83,7 +83,8 @@ module.exports = {
       // }, 10000);
     }, 180000);
 
-    // findPlayerAttacks(client); // Changed this because didnt need it running 24/7
+
+    findPlayerAttacks(client);
 
     setInterval(async () => {
       await verifyClanlogs(client);
@@ -96,10 +97,13 @@ module.exports = {
     // }, 2100000)
 
 
-    setInterval(async () => {
-      await editOldClanLinks(client);
-    }, 90000);
+    // setInterval(async () => {
+    //   await editOldClanLinks(client);
+    // }, 60000);
 
+    setInterval(async () => {
+      await editOldClanLinks2(client);
+    }, 70000);
 
     // Send daily chess match for Elite vs Hahn
     cron.schedule('0 12 * * *', async function () {
@@ -210,9 +214,9 @@ async function dailyChess(client) {
     }
 
     let embed = new EmbedBuilder()
-      .setTitle("Daily Chess")
-      .setDescription(`Have you played your daily chess yet?`)
-      .setThumbnail(`https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/ChessSet.jpg/250px-ChessSet.jpg`)
+      .setTitle("🥺 Daily Chess 🥺")
+      .setDescription(`🌈 Have you played your daily chess yet? 🏳️‍🌈`)
+      .setThumbnail(`https://as1.ftcdn.net/jpg/00/48/82/38/1000_F_48823882_EyKLlPC0qxq1DNBB85TSE67R7uY25rHA.jpg`)
 
     let message = await channelToSend.send({ embeds: [embed], content: `<@${hahnId}> <@${eliteId}>` });
     await db.set(`chess`, {
@@ -280,5 +284,160 @@ async function editOldClanLinks(client) {
       }
 
     }
+  });
+}
+
+async function editOldClanLinks2(client) {
+  client.guilds.cache.forEach(async (guild) => {
+    const db = await API.getDb(guild.id);
+    const clanLinkTracker = await db.get(`clanLinkTracker2`);
+    if (!clanLinkTracker) return;
+    const currentTime = Math.floor(Date.now() / 1000); // Current Unix time in seconds
+    for (const expiry in clanLinkTracker) {
+      const expiryTime = Number(expiry);
+
+      if (currentTime > expiryTime) {
+        console.log("Clan link expired");
+
+        let messages = clanLinkTracker[expiry];
+
+        for (const clantag in messages) {
+          for (const messageKey in messages[clantag]) {
+            const messageData = messages[clantag][messageKey];
+            const { messageId, channelId } = messageData;
+
+            let channel, message;
+            try {
+              channel = await client.channels.fetch(channelId);
+              message = await channel.messages.fetch(messageId);
+
+              const embed = new EmbedBuilder()
+                .setDescription(`## ${messageData.clanName} link has expired`)
+                .setColor('#FE9900');
+              await message.edit({ embeds: [embed], content: `-# **This link for ${messageData.clanName} has expired.**` });
+            } catch (error) {
+              console.log("Couldn't fetch clan link message, delete from db.");
+            }
+
+            delete messages[clantag][messageKey];
+          }
+
+          if (Object.keys(messages[clantag]).length === 0) {
+            console.log(`No more messages left for clantag ${clantag}. Removing clantag.`);
+            delete messages[clantag];
+          }
+        }
+
+        if (Object.keys(messages).length === 0) {
+          console.log(`No more clantags left under expiry ${expiry}. Removing expiry.`);
+          delete clanLinkTracker[expiry];
+        } else {
+          await db.set(`clanLinkTracker2.${expiry}`, messages);
+        }
+      }
+
+
+
+
+
+
+
+      //       messages[clantag] = 
+      // messageData: {
+      //   channelId: '1276747703002464337',
+      //   clanName: 'TheAddictedOnes',
+      //   expiryTime: 1745699119,
+      //   memberThatSent: 'Zackytest',
+      //   messageId: '1364716519120048160'
+      // }
+
+      else {
+        // console.log("Updating a clan link...")
+        let messages = clanLinkTracker[expiry]; // Get the messages { clantag: { messageInfo } }
+        let clanInfo;
+        let clantag;
+        if (messages && Object.keys(messages).length > 0) {
+          clantag = Object.keys(messages)[0]; // Get the first clantag
+        } else {
+          console.error("Messages are empty or undefined.");
+          continue;
+        }
+
+        clanInfo = await API.getClan(clantag);
+
+        let currentMembersCount = clanInfo?.members || "N/A"; // Count of members
+        // let currentMembersCount = 47; // Count of members
+        let oldMembersCount = messages[clantag]?.clanMembers; // Safely get old member count
+
+        if (currentMembersCount === oldMembersCount) {
+          // console.log("Same member count, skipping update.");
+          continue;
+        }
+
+        // console.log("New member count, updating messages");
+        for (const messageId in messages[clantag]) {
+          if (messageId === "clanMembers") continue; // Skip the non-message field
+          const messageData = messages[clantag][messageId]; // Access individual message data
+          const { messageId: fetchedMessageId, channelId } = messageData;
+
+          if (!channelId) {
+            console.error(`channelId is undefined for messageId: ${messageId}`);
+            delete messages[clantag][messageId];
+            continue;
+          }
+
+          let channel, message;
+          try {
+            channel = await client.channels.fetch(channelId);
+            message = await channel.messages.fetch(fetchedMessageId);
+          } catch (error) {
+            console.error("Couldn't fetch clan links message, deleting from DB.", error);
+            delete messages[clantag][messageId];
+
+            // Update the database
+            await db.set(`clanLinkTracker2.${expiry}`, messages);
+
+            // Clean up if no messages are left under the clantag
+            if (Object.keys(messages[clantag]).length === 1 && "clanMembers" in messages[clantag]) {
+              console.log(`No more messages left for ${clantag}. Deleting clantag.`);
+              delete messages[clantag];
+              await db.set(`clanLinkTracker2.${expiry}`, messages);
+            }
+            continue;
+          }
+
+          let clanData = await db.get(`clans.${clantag}`);
+          let inviteLink = clanData["clanLink"];
+          let clanName = clanData['clanName'];
+          let embed = new EmbedBuilder()
+            .setDescription(`## [Click here to join ${clanName}](<${inviteLink}>)\n-# Expires: <t:${expiry}:R> | ${currentMembersCount || "N/A"}/50`) // Make the message bold
+            .setColor('#00FF00');
+
+          let editedMessage = `-# [Click this to join ${clanName}](<${inviteLink}>) Expires: <t:${expiry}:R> | ${currentMembersCount || "N/A"}/50`;
+
+          await message.edit({ embeds: [embed], content: editedMessage });
+        }
+
+        // Safely update `clanMembers`
+        if (messages[clantag]) {
+          messages[clantag].clanMembers = currentMembersCount; // Update the member count
+          await db.set(`clanLinkTracker2.${expiry}`, messages);
+        } else {
+          console.log(`No clan tag data found to update for ${clantag}`);
+        }
+      }
+
+    }
+
+    // Final pass: Check for completely empty `expiry` entries
+    for (const expiry in clanLinkTracker) {
+      if (Object.keys(clanLinkTracker[expiry]).length === 0) {
+        console.log(`Found empty expiry entry ${expiry}, removing.`);
+        delete clanLinkTracker[expiry];
+      }
+    }
+
+    // Update the entire database
+    await db.set('clanLinkTracker2', clanLinkTracker);
   });
 }

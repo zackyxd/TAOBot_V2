@@ -7,6 +7,7 @@ const { QuickDB } = require("quick.db")
 const fs = require('fs');
 const { createSuccessEmbed, createExistEmbed, createErrorEmbed, createMaintenanceEmbed } = require('../../utilities/embedUtility.js');
 const cron = require('node-cron');
+const { fork } = require('child_process');
 
 
 // module.exports = {
@@ -31,38 +32,45 @@ const cron = require('node-cron');
 // }
 
 const findPlayerAttacks = async (client) => {
-  // await findAttacks(client);
-  // cron.schedule('0 */3 * * * 4,5,6,7', async function () {
-  //   findAttacks(client);
-  // }, {
-  //   scheduled: true,
-  //   timezone: 'America/Phoenix'
-  // });
+  const scheduleOptions = {
+    scheduled: true,
+    timezone: 'America/Phoenix'
+  };
 
-  // cron.schedule('0 */4 0-2 * * 1', async function () {
-  //   await findAttacks(client);
-  // }, {
-  //   scheduled: true,
-  //   timezone: 'America/Phoenix'
-  // });
-}
+  console.log('Trying to fork...')
+  const runFork = () => {
+    // console.log(path.join(__dirname, "findAttacksRunner.js"))
+    const child = fork(path.join(__dirname, "findAttacksRunner.js"));
+    const safeClientData = {
+      guilds: client.guilds.cache.map(g => ({ id: g.id }))
+    };
+    child.send({ command: "runFindAttacks", client: safeClientData });
+
+    child.on("exit", code => {
+      if (code !== 0) console.error("Forked findAttacks exited with code:", code);
+    });
+  };
+
+  cron.schedule('0 */3 * * * 4,5,6,7', runFork, scheduleOptions);
+  cron.schedule('0 */3 0-2 * * 1', runFork, scheduleOptions);
+  // cron.schedule('*/10 * * * * 4,5,6,7', runFork, scheduleOptions);
+};
 
 const participantBatchSize = 10; // Batch size for participants
 
-async function findAttacks(client) {
-  console.log("Checking all clan attacks...");
-
-  const guildTasks = Array.from(client.guilds.cache.values()).map(async guild => {
-    const dbPath = API.findFileUpwards(__dirname, `guildData/${guild.id}.sqlite`);
+async function findAttacks(lightClient) {
+  console.log("Finding player attacks");
+  const guildTasks = lightClient.guilds.map(async g => {
+    const dbPath = API.findFileUpwards(__dirname, `guildData/${g.id}.sqlite`);
     const db = new QuickDB({ filePath: dbPath, timeout: 5000 });
     const clans = await db.get(`clans`);
     if (!clans) return;
+    console.log("Checking all clan attacks...");
 
     const playerAttacksMap = new Map();
     const startClantagTimes = Date.now();
     const clantagTasks = Object.keys(clans).map(async clantag => {
       if (!clans[clantag]['family-clan']) return;
-
       let raceData = await API.getCurrentRiverRace(clantag);
       if (!raceData || raceData.data) return;
 
@@ -85,13 +93,18 @@ async function findAttacks(client) {
     await Promise.all(clantagTasks);
     await savePlayerAttacks(db, playerAttacksMap);
     playerAttacksMap.clear(); // Clear map from memory
-    console.log(`Finished setting everyone's attacks for all clans in guild ${guild.id} in ${Date.now() - startClantagTimes}ms`);
+    console.log(`Finished setting everyone's attacks for all clans in guild ${g.id} in ${Date.now() - startClantagTimes}ms`);
   });
 
   await Promise.all(guildTasks);
 }
 
 async function processParticipant(db, participant, playerAttacksMap, currentWarDay) {
+  if (!participant.tag) {
+    console.warn("Skipping participant with missing tag:", participant);
+    return;
+  }
+
   let playerData = await db.get(`playertags.${participant.tag}`);
   if (!playerData) {
     playerData = {

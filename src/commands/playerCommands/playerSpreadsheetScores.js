@@ -258,5 +258,5 @@ async function grabStatsData(db, userId, warType) {
   }
   activePlayers.sort((a, b) => b.fameAverage - a.fameAverage); // sort by fame
   const top5 = activePlayers.slice(0, 5);
-  return top5;
+  return top5; // previously top 5
 }

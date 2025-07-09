@@ -44,6 +44,7 @@ module.exports = {
         else {
           if (account.data.description.includes("Maintenance")) {
             await message.channel.send({ embeds: [account] });
+            return;
           }
         }
 
@@ -54,14 +55,15 @@ module.exports = {
         if (tag.charAt(0) !== '#') {
           tag = '#' + tag;
         }
+        if (tag === '#9000') return;
         let account = await API.getPlayer(tag);
-        console.log(account);
         if (!account.data) {
           validTags.add(tag);
         }
         else {
           if (account.data.description.includes("Maintenance")) {
             // await message.channel.send({ embeds: [account] });
+            return;
           }
         }
       }

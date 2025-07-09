@@ -35,11 +35,11 @@ module.exports = {
     const db = new QuickDB({ filePath: dbPath });
 
     // Get PlayerData.json, if error return error, else link player.
-    let crAccount = await API.getPlayer(playertag);
-    if (crAccount.data) {
-      await interaction.editReply({ embeds: [crAccount] });
-      return;
-    }
+    // let crAccount = await API.getPlayer(playertag);
+    // if (crAccount.data) {
+    //   await interaction.editReply({ embeds: [crAccount] });
+    //   return;
+    // }
 
 
     try {
@@ -52,7 +52,6 @@ module.exports = {
       let discordId = playerData.discordId;
       // Remove the discordId from the player data
       delete playerData.discordId;
-      console.log(playerData);
       // Update the player data in the database
       await db.set(`playertags.${playertag}`, playerData);
 

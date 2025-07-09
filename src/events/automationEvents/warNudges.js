@@ -30,6 +30,7 @@ const postNudges = async (client) => {
 
 
   cron.schedule('0 19,21,23,1 * * 5,6,7', () => {
+    // cron.schedule('0 23,1 * * 5,6,7', () => {
     postAutoNudge(client, "normal"); // normal
     console.log("Sending Normal Nudge!");
   }, {
@@ -80,7 +81,7 @@ const postNudges = async (client) => {
 
   // Testing TODO
   // cron.schedule('*/10 * * * * *', () => {
-  //   postAutoNudge(client, "l2w"); // normal
+  //   postAutoNudge(client, "normal"); // normal
   // }, {
   //   scheduled: true,
   //   timezone: "America/Phoenix"
@@ -119,14 +120,14 @@ async function postAutoNudge(client, nudgeType) {
   const guilds = Array.from(client.guilds.cache.values());
 
   await Promise.all(guilds.map(async (guild) => {
+
     const dbPath = API.findFileUpwards(__dirname, `guildData/${guild.id}.sqlite`);
     const db = new QuickDB({ filePath: dbPath, timeout: 5000 });
     const clans = await db.get(`clans`);
     if (!clans) {
       return;
     }
-
-    await findAttacks(client); // Update all player attacks in database
+    // await findAttacks(client); // Update all player attacks in database
 
     await Promise.all(Object.keys(clans).map(async (clantag) => {
       // console.log(clantag);
@@ -601,16 +602,16 @@ async function checkIfPing(role, playerData, discordData, all, l2w) {
         return pingPlayer(playerData, true, false, emojis);
       }
 
-      if (isColeader(playerData)) {
+      if (isColeader(playerData) && shouldPingCo(discordData) === false) {
         return pingPlayer(playerData, true, false, emojis);
       }
 
 
       // if pingCo is true, ping them
-      if (!isNeverPing(discordData)) {
+      if (shouldPingCo(discordData) === true) {
         return pingPlayer(playerData, true, true, emojis);
       }
-      else if (isNeverPing(discordData)) {
+      else if (shouldPingCo(discordData) === false) {
         emojis.push('👴');
         return pingPlayer(playerData, true, false, emojis);
       }
@@ -638,7 +639,7 @@ async function checkIfPing(role, playerData, discordData, all, l2w) {
   }
 
   // Never ping these players
-  if (isNeverPing(discordData)) {
+  if (shouldPingCo(discordData) === false) {
     emojis.push('👴');
     // Still check if out of clan
     if (isNotInClan(playerData)) {
@@ -721,8 +722,11 @@ function isNotInClan(playerData) {
   return false;
 }
 
-function isNeverPing(discordData) {
+function shouldPingCo(discordData) {
   if (discordData?.pingCo === false) {
+    return false;
+  }
+  else if (discordData?.pingCo === true || discordData?.pingCo === undefined) {
     return true;
   }
   return false;

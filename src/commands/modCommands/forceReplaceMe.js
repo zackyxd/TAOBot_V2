@@ -44,29 +44,29 @@ module.exports = {
         if (!clanData && (await db.get(`users.${discordId}.replace-me`) === false || await db.get(`users.${discordId}.replace-me`) === undefined)) {
           let checkPlayerBattleLog = await API.getPlayerBattleHistory(playertag);
           const processedClans = new Set();
-          checkPlayerBattleLog.forEach(async battle => {
-            if (battle.team && battle.team.length > 0 && battle.gameMode.name !== ("TeamVsTeam")) {
-              battle.team.forEach(async player => {
+          for (const battle of checkPlayerBattleLog) {
+            if (battle.team && battle.team.length > 0 && battle.gameMode.name !== "TeamVsTeam") {
+              for (const player of battle.team) {
                 if (player.clan && player.clan.tag && !processedClans.has(player.clan.tag)) {
                   processedClans.add(player.clan.tag);
                   const clanData = await db.get(`clans.${player.clan.tag}`);
                   if (clanData && clanData.importantChannel) {
                     const importantChannel = interaction.guild.channels.cache.get(clanData.importantChannel);
                     if (importantChannel) {
-                      if (!member.permissions.has([PermissionsBitField.Flags.MuteMembers])) {
+                      if (!user.permissions.has([PermissionsBitField.Flags.MuteMembers])) {
                         await importantChannel.send({ embeds: [createErrorEmbed(`⚠️ <@${discordId}> (${player.name}) asked to be replaced.`)] });
-                        return;
+                        continue; // Exit the loop and stop further execution inside the battle log processing
                       }
                     }
                   }
                 }
-              });
+              }
             }
-          });
+          }
         }
       }
     } catch (error) {
-      console.error("Couldn't set replace-me", error)
+      console.error("Couldn't set replace-me", error);
     }
 
 

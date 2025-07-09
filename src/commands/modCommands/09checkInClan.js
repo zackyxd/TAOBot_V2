@@ -130,7 +130,7 @@ module.exports = {
         }
       })
       let pingMessage = "";
-      console.log("This is the players to ping: ", playerPings2);
+      // console.log("This is the players to ping: ", playerPings2);
       if (playerPings2 !== "") {
         pingMessage = playerPings1 + playerPings2;
       }
@@ -153,7 +153,7 @@ module.exports = {
       if (clanInfo && clanInfo.clanLink && clanInfo.alreadyExpired === 0) {
         let embed = new EmbedBuilder()
           .setColor('#00FF00') // Green color for success
-          .setDescription(`## [Click here to join ${clanInfo.clanName}](<${clanInfo.clanLink}>)\n-# Expires: <t:${clanInfo.expiryTime}:R>`) // Make the message bold
+          .setDescription(`## [Click here to join ${clanInfo.clanName}](<${clanInfo.clanLink}>)\n-# Expires: <t:${clanInfo.expiryTime}:R> | ${clanData.members}/50`) // Make the message bold
         if (membersInClanCount === members.length) {
           embed.setFooter({ text: 'All members in this channel have joined!' })
         }
@@ -161,10 +161,10 @@ module.exports = {
         // .setFooter({ text: convertUnixToTime(clanInfo.expiryTime) })
         await interaction.channel.send(pingMessage);
 
-        let content = `-# [Click this to join ${clanInfo.clanName}](<${clanInfo.clanLink}>) Expires: <t:${clanInfo.expiryTime}:R>`
+        let content = `-# [Click this to join ${clanInfo.clanName}](<${clanInfo.clanLink}>) Expires: <t:${clanInfo.expiryTime}:R> | ${clanData.members}/50`;
         let linkMessage = await interaction.channel.send({ embeds: [embed], content: content });
 
-        await addClanLinkToDatabase(db, interaction, interaction.channel.id, linkMessage.id, clanInfo);
+        await addClanLinkToDatabase(db, interaction, interaction.channel.id, linkMessage.id, clanInfo, clanData.members);
       }
 
       return;
@@ -181,14 +181,17 @@ module.exports = {
     const embedDescriptions = buildEmbedsFromLines(lines, MAX_DESC_LENGTH);
 
     // Now send each part in its own embed.
+    let footer = `${clanData.members}/50`
     for (const descPart of embedDescriptions) {
       let embed = new EmbedBuilder()
         .setTitle(`${clanData.name} Member Check (${membersInClanCount}/${members.length})`)
         .setThumbnail(process.env.BOT_IMAGE)
         .setColor("Purple")
-        .setDescription(descPart);
+        .setDescription(descPart)
+        .setFooter({ text: footer })
       if (membersInClanCount === members.length) {
-        embed.setFooter({ text: 'All members in this channel have joined!' });
+        footer += ` | All members in this channel have joined!`;
+        embed.setFooter({ text: footer });
       }
       await interaction.channel.send({ embeds: [embed] });
     }
@@ -233,6 +236,7 @@ function getDayAndHour(timezone) {
 }
 
 function showPingDelay(playertag, discordIds, users, delay) {
+  // console.log(playertag, discordIds, users, delay);
   let discordId = discordIds[playertag].discordId;
   if (users[discordId] && users[discordId].movementPingsDelay === true && delay === true) {
     return "🕒";
@@ -242,19 +246,45 @@ function showPingDelay(playertag, discordIds, users, delay) {
 }
 
 
-async function addClanLinkToDatabase(db, interaction, channelId, messageId, clanInfo) {
+async function addClanLinkToDatabase(db, interaction, channelId, messageId, clanInfo, membersCount) {
   const memberThatSent = interaction.member?.nickname || interaction.user.username;
   let expiryTime = clanInfo.expiryTime;
   let clanName = clanInfo.clanName;
 
-  let clanLinkTracker = {
-    'expiryTime': expiryTime,
-    'clanName': clanName,
-    'channelId': channelId,
-    'messageId': messageId,
-    // 'messageIdMini': messageIdMini,
-    'memberThatSent': memberThatSent,
-  }
+  // let clanLinkTracker = {
+  //   'expiryTime': expiryTime,
+  //   'clanName': clanName,
+  //   'channelId': channelId,
+  //   'messageId': messageId,
+  //   'memberThatSent': memberThatSent,
+  // }
 
-  await db.set(`clanLinkTracker.${expiryTime}.${messageId}`, clanLinkTracker)
+  // Create the object for the current messageId
+  const messageData = {
+    channelId,
+    clanName,
+    expiryTime,
+    memberThatSent,
+    messageId,
+  };
+
+  try {
+    // Retrieve the existing data for this expiry time
+    const existingData = await db.get(`clanLinkTracker2.${expiryTime}`) || {};
+
+    // Ensure there is a structure under the clantag and add the messageId
+    if (!existingData[clantag]) {
+      existingData[clantag] = {};
+    }
+    existingData[clantag][messageId] = messageData;
+    existingData[clantag].clanMembers = membersCount
+
+    // Save the updated structure back to the database
+    await db.set(`clanLinkTracker2.${expiryTime}`, existingData);
+
+  } catch (error) {
+    console.error("Error saving to database:", error);
+    let errorChannel = await member.guild.channels.fetch('1199157863344517180'); // Replace with your error channel ID
+    await errorChannel.send(`Error saving to db: ${error.message}\n${memberThatSent}, ${clantag}, https://discord.com/channels/722956243261456536/${channelId}/${messageId}`);
+  }
 }

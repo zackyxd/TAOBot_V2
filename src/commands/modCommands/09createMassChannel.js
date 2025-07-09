@@ -41,12 +41,12 @@ module.exports = {
       return;
     }
     const regex = /<@\d+>/g;
-    const matches = players.match(regex);
+    let matches = players.match(regex);
     if (!matches) {
       await interaction.editReply({ embeds: [createErrorEmbed("Please mention at least one @user.")] });
       return;
     }
-
+    matches = [...new Set(matches)]
     const guild = interaction.guild;
     const dbPath = path.join(__dirname, `../../../guildData/${interaction.guild.id}.sqlite`);
     const db = new QuickDB({ filePath: dbPath });
@@ -67,21 +67,31 @@ module.exports = {
     let wantedAccounts = []; // all the playertags linked
     let multiPlayertagsData = []; // all the playertags linked
     let usersWithPlayertags = []; // All the users with a real account
-
     for (let rawUser of matches) {
       console.log(rawUser);
       // Convert user string <@222222> to just id
       let userId = rawUser.substring(2, rawUser.length - 1);
       let findLinkedAccounts = await db.get(`users.${userId}`);
       let playertags = findLinkedAccounts?.playertags;
-
+      let userObj;
       if (playertags && playertags.length > 1) {
-        let userObj = await guild.members.fetch(userId);
-        multiPlayertagsData.push({ user: userObj, playertags });
+        try {
+          userObj = await guild.members.fetch(userId);
+          multiPlayertagsData.push({ user: userObj, playertags });
+        } catch (error) {
+          console.log("Account not in server:", userId)
+        }
       }
       else if (playertags && playertags.length === 1) {
-        let userObj = await guild.members.fetch(userId);
-        wantedAccounts.push({ user: userObj, playertag: playertags[0] });
+        try {
+          userObj = await guild.members.fetch(userId);
+          wantedAccounts.push({ user: userObj, playertag: playertags[0] });
+        } catch (error) {
+          console.log("Account not in server:", userId)
+        }
+      }
+      if (!userObj) {
+        continue;
       }
       usersWithPlayertags.push(userId);
     }
@@ -130,7 +140,7 @@ module.exports = {
         selectedTags = await handleMultiplePlayertags(interaction, multiPlayertagsData);
       } catch (error) {
         console.log(error);
-        await interaction.followUp({ content: '', embeds: [createExistEmbed(`Timed out or invalid. ${error}. Likely too many players in the list`)], components: [] })
+        await interaction.followUp({ content: '', embeds: [createExistEmbed(`Timed out or invalid. ${error}. Likely too many players in the list`)], components: [], ephemeral: true })
         return;
       }
 
@@ -178,10 +188,15 @@ module.exports = {
 
     // Add specific permission overwrites for mentioned users
     for (let userId of usersWithPlayertags) {
-      await channel.permissionOverwrites.create(userId, {
-        ViewChannel: true,
-        SendMessages: true,
-      });
+      try {
+        await channel.permissionOverwrites.create(userId, {
+          ViewChannel: true,
+          SendMessages: true,
+        });
+      } catch (error) {
+        console.log('User does not exist in the server', userId)
+        delete usersWithPlayertags[userId]
+      }
     }
 
 
@@ -193,6 +208,7 @@ module.exports = {
       allUsersHaveRole = true;
       for (let userId of usersWithPlayertags) {
         let member = interaction.guild.members.cache.get(userId);
+        if (!member) continue;
         if (!channel.permissionsFor(member).has(PermissionsBitField.Flags.ViewChannel)) {
           await channel.permissionOverwrites.create(member, {
             ViewChannel: true,
@@ -279,7 +295,8 @@ async function handleMultiplePlayertags(interaction, multiUsersData) {
       const emoji = pt.levelId ? `<:experience${pt.expLevel}:${pt.levelId}>` : '';
       mapping[currentOption] = { user, playertag: pt.playertag, pt };
       groupMapping[user.id].push(currentOption);
-      description += `${currentOption}. [${pt.name}](<https://royaleapi.com/player/${(pt.playertag).substring(1)}>) (${pt.playertag}) ${emoji}\n`;
+      // description += `${currentOption}. [${pt.name}](<https://royaleapi.com/player/${(pt.playertag).substring(1)}>) (${pt.playertag}) ${emoji}\n`;
+      description += `${currentOption}. ${pt.name} (${pt.playertag}) ${emoji}\n`;
       currentOption++;
     });
     description += '\n';
@@ -448,7 +465,8 @@ function generateEmbedFromMapping(mapping, selectedIndices, groupMapping) {
       const entry = mapping[opt];
       const emoji = entry.pt.levelId ? `<:experience${entry.pt.expLevel}:${entry.pt.levelId}>` : "";
       const checkmark = selectedIndices.has(opt) ? " ✅" : "";
-      description += `${opt}. [${entry.pt.name}](<https://royaleapi.com/player/${entry.pt.playertag.substring(1)}>) (${entry.pt.playertag}) ${emoji}${checkmark}\n`;
+      // description += `${opt}. [${entry.pt.name}](<https://royaleapi.com/player/${entry.pt.playertag.substring(1)}>) (${entry.pt.playertag}) ${emoji}${checkmark}\n`;
+      description += `${opt}. ${entry.pt.name} (${entry.pt.playertag}) ${emoji}${checkmark}\n`;
     });
     description += "\n";
   }

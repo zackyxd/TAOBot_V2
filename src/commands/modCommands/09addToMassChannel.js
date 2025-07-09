@@ -100,7 +100,7 @@ module.exports = {
       wantedAccounts = [...wantedAccounts, ...selectedTags];
     }
     if (wantedAccounts.length === 0) {
-      await interaction.editReply({ embeds: [createErrorEmbed("No accounts selected, user(s) not added.")] });
+      await interaction.editReply({ embeds: [createErrorEmbed("No accounts selected, user(s) not added. User(s) may not have accounts linked.")] });
       return;
     }
 

@@ -123,6 +123,7 @@ async function processMemberJoinLeave(db, previousData, currentData, clantag, gu
       let normalizedClantag = (clantag).substring(1);
       let role = getRoleDisplayName(member.role);
       let arenaName = (member.arena.name || "0_").replace(/[!'.,]/g, '').toLowerCase().replace(/\s+/g, '');
+      // console.log(arenaName)
       let arenaIconId = await findEmojiId(arenaName);
       let badgeIdIcon = await getLink(currentData.badgeId + ".png");
       description = `**${role} ${action}!**\n`;
@@ -168,8 +169,8 @@ async function processMemberJoinLeave(db, previousData, currentData, clantag, gu
     return await Promise.all(promises);
   };
 
-  changes.push(...await processMembers(membersJoined, 'join'));
   changes.push(...await processMembers(membersLeft, 'left'));
+  changes.push(...await processMembers(membersJoined, 'join'));
 
   return changes;
 }
